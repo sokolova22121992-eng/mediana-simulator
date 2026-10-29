@@ -16,6 +16,8 @@ html, body {
 
 body {
   background: #111820;
+  color: #e8edf2;
+  font-family: Arial, sans-serif;
   overflow: hidden;
 }
 
@@ -27,32 +29,196 @@ body {
 }
 
 .device-area {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  min-width: 0;
+  padding: 8px;
 }
 
-.device-area img {
+.device-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.device-wrap img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
+.hit {
+  position: absolute;
+  border: 2px solid transparent;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.hit:hover,
+.hit:focus-visible {
+  border-color: #47b7ff;
+  background: #47b7ff22;
+  outline: none;
+}
+
+.mode   { left: 76%; top: 17%; width: 19%; height: 17%; border-radius: 50%; }
+.analyze{ left: 75%; top: 34%; width: 9%; height: 5%; }
+.charge { left: 84%; top: 34%; width: 9%; height: 5%; }
+.energy { left: 92%; top: 34%; width: 7%; height: 5%; }
+.shock  { left: 87%; top: 40%; width: 11%; height: 10%; border-radius: 50%; }
+
 .workspace {
   border-left: 1px solid #34404c;
   background: #111820;
+  padding: 28px;
+  overflow: auto;
+}
+
+h1 { font-size: 24px; margin-top: 0; }
+.status {
+  color: #8bd5ff;
+  font-size: 18px;
+  font-weight: bold;
+}
+.panel {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid #34404c;
+  border-radius: 12px;
+  background: #18232e;
+  line-height: 1.5;
+}
+.small { color: #9eacb9; font-size: 14px; }
+
+@media (max-width: 700px) {
+  .simulator { grid-template-columns: 58% 42%; }
+  .workspace { padding: 12px; }
+  h1 { font-size: 18px; }
+  .status { font-size: 15px; }
 }
 </style>
 </head>
 <body>
 <main class="simulator">
   <section class="device-area">
-  <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
+    <div class="device-wrap">
+      <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
+
+      <button class="hit mode" aria-label="Перемикач режимів"
+        title="Перемикач режимів" data-action="mode"></button>
+      <button class="hit analyze" aria-label="Аналіз"
+        title="Аналіз" data-action="analyze"></button>
+      <button class="hit charge" aria-label="Заряд"
+        title="Заряд" data-action="charge"></button>
+      <button class="hit energy" aria-label="Вибір енергії"
+        title="Вибір енергії" data-action="energy"></button>
+      <button class="hit shock" aria-label="Розряд"
+        title="Розряд" data-action="shock"></button>
+    </div>
   </section>
-  <section class="workspace"></section>
+
+  <section class="workspace" aria-live="polite">
+    <h1>MEDIANA Simulator</h1>
+    <div class="status" id="status">Режим: ВИМКНЕНО</div>
+    <div class="panel" id="message">
+      Симулятор готовий. Натисни перемикач режимів на фото.
+    </div>
+    <div class="panel">
+      <div>Вибрана енергія: <strong id="energyValue">150 Дж</strong></div>
+      <p class="small">Навчальна симуляція. Кнопки поки не керують реальним медичним пристроєм.</p>
+    </div>
+  </section>
 </main>
+
+<script>
+const state = {
+  mode: "off",
+  energy: 150,
+  charged: false,
+  analyzed: false
+};
+
+const statusEl = document.getElementById("status");
+const messageEl = document.getElementById("message");
+const energyEl = document.getElementById("energyValue");
+
+function render(status, message) {
+  statusEl.textContent = status;
+  messageEl.textContent = message;
+  energyEl.textContent = state.energy + " Дж";
+}
+
+document.querySelectorAll("[data-action]").forEach(button => {
+  button.addEventListener("click", () => {
+    switch (button.dataset.action) {
+      case "mode":
+        if (state.mode === "off") {
+          state.mode = "manual";
+          state.charged = false;
+          state.analyzed = false;
+          render("Режим: РУЧНИЙ", "Увімкнено ручний режим. Вибери енергію або перейди в інший режим.");
+        } else if (state.mode === "manual") {
+          state.mode = "monitor";
+          state.charged = false;
+          render("Режим: МОНІТОРИНГ", "Режим моніторингу. Доступні функції залежать від вибраного режиму.");
+        } else if (state.mode === "monitor") {
+          state.mode = "aed";
+          state.charged = false;
+          render("Режим: АЗД", "Режим АЗД. Натисни «АНАЛІЗ» для навчальної демонстрації.");
+        } else {
+          state.mode = "off";
+          state.charged = false;
+          state.analyzed = false;
+          render("Режим: ВИМКНЕНО", "Пристрій вимкнено.");
+        }
+        break;
+
+      case "analyze":
+        if (state.mode !== "aed") {
+          render("Дія недоступна", "Для цієї навчальної версії спочатку вибери режим АЗД.");
+          return;
+        }
+        state.analyzed = true;
+        render("АНАЛІЗ ЗАВЕРШЕНО", "Навчальна демонстрація: симульовано результат аналізу ритму. Це не реальна оцінка ЕКГ.");
+        break;
+
+      case "charge":
+        if (state.mode !== "manual") {
+          render("Дія недоступна", "Заряджання в цій версії доступне лише в ручному режимі.");
+          return;
+        }
+        state.charged = true;
+        render("ЗАРЯДЖАННЯ ЗАВЕРШЕНО", "Навчальний заряд готовий. Перед розрядом у реальному пристрої необхідні перевірки безпеки.");
+        break;
+
+      case "energy":
+        if (state.mode !== "manual") {
+          render("Дія недоступна", "Вибір енергії доступний у ручному режимі цієї симуляції.");
+          return;
+        }
+        state.energy = state.energy === 150 ? 200 : state.energy === 200 ? 250 : 150;
+        state.charged = false;
+        render("Режим: РУЧНИЙ", "Вибрану енергію змінено. Після зміни енергії заряд потрібно виконати знову.");
+        break;
+
+      case "shock":
+        if (state.mode !== "manual" || !state.charged) {
+          render("РОЗРЯД ЗАБЛОКОВАНО", "У навчальній симуляції розряд доступний лише після заряджання в ручному режимі.");
+          return;
+        }
+        state.charged = false;
+        render("СИМУЛЬОВАНИЙ РОЗРЯД", "Навчальний розряд виконано. Для наступної спроби потрібне нове заряджання.");
+        break;
+    }
+  });
+});
+</script>
 </body>
 </html>
+
 
