@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MEDIANA Simulator</title>
+<title>MEDIANA Simulator — редактор зон</title>
 <style>
 * { box-sizing: border-box; }
 
@@ -29,7 +29,6 @@ body {
 }
 
 .device-area {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,186 +38,399 @@ body {
 
 .device-wrap {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: min(100%, 128vh);
+  aspect-ratio: 1448 / 1086;
+  flex: 0 1 auto;
 }
 
 .device-wrap img {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  pointer-events: none;
 }
 
-.hit {
+.zone {
   position: absolute;
-  border: 2px solid transparent;
-  background: transparent;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  border: 2px solid #35b8ff;
+  border-radius: 8px;
+  background: #35b8ff33;
+  color: white;
   padding: 0;
-  cursor: pointer;
-  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(8px, 0.75vw, 12px);
+  font-weight: bold;
+  text-shadow: 0 1px 3px #000;
+  touch-action: none;
+  user-select: none;
 }
 
-.hit:hover,
-.hit:focus-visible {
-  border-color: #47b7ff;
-  background: #47b7ff22;
-  outline: none;
+.zone.selected {
+  border-color: #ffd34e;
+  background: #ffd34e44;
+  z-index: 3;
 }
 
-.mode   { left: 76%; top: 17%; width: 19%; height: 17%; border-radius: 50%; }
-.analyze{ left: 75%; top: 34%; width: 9%; height: 5%; }
-.charge { left: 84%; top: 34%; width: 9%; height: 5%; }
-.energy { left: 92%; top: 34%; width: 7%; height: 5%; }
-.shock  { left: 87%; top: 40%; width: 11%; height: 10%; border-radius: 50%; }
+.zone.round {
+  border-radius: 50%;
+}
+
+.editing .zone {
+  cursor: move;
+}
+
+.zone .resize {
+  display: none;
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #111820;
+  border-radius: 3px;
+  background: #ffd34e;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.editing .zone.selected .resize {
+  display: block;
+}
 
 .workspace {
-  border-left: 1px solid #34404c;
-  background: #111820;
-  padding: 28px;
+  min-width: 0;
   overflow: auto;
+  border-left: 1px solid #34404c;
+  padding: 24px;
+  background: #111820;
 }
 
-h1 { font-size: 24px; margin-top: 0; }
-.status {
-  color: #8bd5ff;
-  font-size: 18px;
-  font-weight: bold;
+h1 { font-size: 25px; margin: 0 0 18px; }
+h2 { font-size: 17px; margin: 22px 0 10px; }
+
+button, select {
+  font: inherit;
 }
-.panel {
-  margin-top: 20px;
-  padding: 18px;
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-button, select {
+  color: white;
+  background: #263746;
+  border: 1px solid #526576;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.tool-button.active {
+  background: #176b9c;
+  border-color: #65caff;
+}
+
+.info {
+  margin-top: 18px;
+  padding: 15px;
   border: 1px solid #34404c;
-  border-radius: 12px;
-  background: #18232e;
+  border-radius: 10px;
+  background: #192631;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
-.small { color: #9eacb9; font-size: 14px; }
+
+.muted {
+  color: #aab9c7;
+  font-size: 13px;
+}
+
+.coordinates {
+  color: #8bd5ff;
+  font-family: monospace;
+}
 
 @media (max-width: 700px) {
   .simulator { grid-template-columns: 58% 42%; }
-  .workspace { padding: 12px; }
+  .workspace { padding: 10px; }
   h1 { font-size: 18px; }
-  .status { font-size: 15px; }
+  .tool-button, select { font-size: 12px; padding: 8px; }
 }
 </style>
 </head>
 <body>
 <main class="simulator">
   <section class="device-area">
-    <div class="device-wrap">
+    <div class="device-wrap" id="deviceWrap">
       <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
 
-      <button class="hit mode" aria-label="Перемикач режимів"
-        title="Перемикач режимів" data-action="mode"></button>
-      <button class="hit analyze" aria-label="Аналіз"
-        title="Аналіз" data-action="analyze"></button>
-      <button class="hit charge" aria-label="Заряд"
-        title="Заряд" data-action="charge"></button>
-      <button class="hit energy" aria-label="Вибір енергії"
-        title="Вибір енергії" data-action="energy"></button>
-      <button class="hit shock" aria-label="Розряд"
-        title="Розряд" data-action="shock"></button>
+      <button class="zone round" data-id="mode"
+        style="--x:73%;--y:16.5%;--w:15%;--h:18%"
+        aria-label="Перемикач режимів" title="Перемикач режимів">
+        РЕЖИМ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="analyze"
+        style="--x:67.3%;--y:33.5%;--w:6.5%;--h:4.5%"
+        aria-label="Аналіз" title="Аналіз">
+        АНАЛІЗ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="charge"
+        style="--x:73%;--y:33.5%;--w:6.5%;--h:4.5%"
+        aria-label="Заряд" title="Заряд">
+        ЗАРЯД<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="energy"
+        style="--x:79%;--y:33.5%;--w:7%;--h:4.5%"
+        aria-label="Вибір енергії" title="Вибір енергії">
+        ЕНЕРГІЯ<span class="resize"></span>
+      </button>
+
+      <button class="zone round" data-id="shock"
+        style="--x:76.5%;--y:38.5%;--w:9%;--h:9%"
+        aria-label="Розряд" title="Розряд">
+        РОЗРЯД<span class="resize"></span>
+      </button>
     </div>
   </section>
 
-  <section class="workspace" aria-live="polite">
+  <section class="workspace">
     <h1>MEDIANA Simulator</h1>
-    <div class="status" id="status">Режим: ВИМКНЕНО</div>
-    <div class="panel" id="message">
-      Симулятор готовий. Натисни перемикач режимів на фото.
+
+    <div class="toolbar">
+      <button id="editToggle" class="tool-button active">
+        Редагування зон: УВІМК.
+      </button>
+      <button id="resetZones" class="tool-button">
+        Скинути позиції
+      </button>
+      <button id="exportZones" class="tool-button">
+        Показати координати
+      </button>
     </div>
-    <div class="panel">
-      <div>Вибрана енергія: <strong id="energyValue">150 Дж</strong></div>
-      <p class="small">Навчальна симуляція. Кнопки поки не керують реальним медичним пристроєм.</p>
+
+    <h2>Вибір зони</h2>
+    <select id="zoneSelect" style="width:100%">
+      <option value="mode">Перемикач режимів</option>
+      <option value="analyze">АНАЛІЗ</option>
+      <option value="charge">ЗАРЯД</option>
+      <option value="energy">ВИБІР ЕНЕРГІЇ</option>
+      <option value="shock">РОЗРЯД</option>
+    </select>
+
+    <div class="info" id="help">
+      <strong>Режим налаштування</strong>
+      <p>1. Вибери зону у списку або клацни її на фото.</p>
+      <p>2. Перетягни зону мишкою на потрібну кнопку.</p>
+      <p>3. Потягни жовтий квадратик у правому нижньому куті, щоб змінити розмір.</p>
+      <p class="muted">Координати зберігаються в цьому браузері. Після налаштування їх потрібно буде перенести в код, щоб вони працювали на інших пристроях.</p>
+    </div>
+
+    <div class="info">
+      <strong>Вибрана зона:</strong>
+      <div id="selectedName">Перемикач режимів</div>
+      <div class="coordinates" id="coordText"></div>
+    </div>
+
+    <div class="info muted" id="testResult" aria-live="polite">
+      Редактор готовий. Спочатку налаштуй положення зон.
     </div>
   </section>
 </main>
 
 <script>
-const state = {
-  mode: "off",
-  energy: 150,
-  charged: false,
-  analyzed: false
+const wrap = document.getElementById("deviceWrap");
+const zones = [...document.querySelectorAll(".zone")];
+const editToggle = document.getElementById("editToggle");
+const zoneSelect = document.getElementById("zoneSelect");
+const selectedName = document.getElementById("selectedName");
+const coordText = document.getElementById("coordText");
+const help = document.getElementById("help");
+const testResult = document.getElementById("testResult");
+
+const names = {
+  mode: "Перемикач режимів",
+  analyze: "АНАЛІЗ",
+  charge: "ЗАРЯД",
+  energy: "ВИБІР ЕНЕРГІЇ",
+  shock: "РОЗРЯД"
 };
 
-const statusEl = document.getElementById("status");
-const messageEl = document.getElementById("message");
-const energyEl = document.getElementById("energyValue");
+const initial = {};
+zones.forEach(zone => {
+  initial[zone.dataset.id] = {
+    x: parseFloat(zone.style.getPropertyValue("--x")),
+    y: parseFloat(zone.style.getPropertyValue("--y")),
+    w: parseFloat(zone.style.getPropertyValue("--w")),
+    h: parseFloat(zone.style.getPropertyValue("--h"))
+  };
+});
 
-function render(status, message) {
-  statusEl.textContent = status;
-  messageEl.textContent = message;
-  energyEl.textContent = state.energy + " Дж";
+let editing = true;
+let selected = "mode";
+let drag = null;
+
+function getZone(id) {
+  return zones.find(zone => zone.dataset.id === id);
 }
 
-document.querySelectorAll("[data-action]").forEach(button => {
-  button.addEventListener("click", () => {
-    switch (button.dataset.action) {
-      case "mode":
-        if (state.mode === "off") {
-          state.mode = "manual";
-          state.charged = false;
-          state.analyzed = false;
-          render("Режим: РУЧНИЙ", "Увімкнено ручний режим. Вибери енергію або перейди в інший режим.");
-        } else if (state.mode === "manual") {
-          state.mode = "monitor";
-          state.charged = false;
-          render("Режим: МОНІТОРИНГ", "Режим моніторингу. Доступні функції залежать від вибраного режиму.");
-        } else if (state.mode === "monitor") {
-          state.mode = "aed";
-          state.charged = false;
-          render("Режим: АЗД", "Режим АЗД. Натисни «АНАЛІЗ» для навчальної демонстрації.");
-        } else {
-          state.mode = "off";
-          state.charged = false;
-          state.analyzed = false;
-          render("Режим: ВИМКНЕНО", "Пристрій вимкнено.");
-        }
-        break;
+function readPosition(zone) {
+  return {
+    x: parseFloat(zone.style.getPropertyValue("--x")),
+    y: parseFloat(zone.style.getPropertyValue("--y")),
+    w: parseFloat(zone.style.getPropertyValue("--w")),
+    h: parseFloat(zone.style.getPropertyValue("--h"))
+  };
+}
 
-      case "analyze":
-        if (state.mode !== "aed") {
-          render("Дія недоступна", "Для цієї навчальної версії спочатку вибери режим АЗД.");
-          return;
-        }
-        state.analyzed = true;
-        render("АНАЛІЗ ЗАВЕРШЕНО", "Навчальна демонстрація: симульовано результат аналізу ритму. Це не реальна оцінка ЕКГ.");
-        break;
+function savePositions() {
+  const positions = {};
+  zones.forEach(zone => positions[zone.dataset.id] = readPosition(zone));
+  try {
+    localStorage.setItem("mediana-zone-positions", JSON.stringify(positions));
+  } catch (_) {}
+}
 
-      case "charge":
-        if (state.mode !== "manual") {
-          render("Дія недоступна", "Заряджання в цій версії доступне лише в ручному режимі.");
-          return;
-        }
-        state.charged = true;
-        render("ЗАРЯДЖАННЯ ЗАВЕРШЕНО", "Навчальний заряд готовий. Перед розрядом у реальному пристрої необхідні перевірки безпеки.");
-        break;
+function loadPositions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("mediana-zone-positions") || "null");
+    if (!saved) return;
+    zones.forEach(zone => {
+      const p = saved[zone.dataset.id];
+      if (!p) return;
+      setPosition(zone, p);
+    });
+  } catch (_) {}
+}
 
-      case "energy":
-        if (state.mode !== "manual") {
-          render("Дія недоступна", "Вибір енергії доступний у ручному режимі цієї симуляції.");
-          return;
-        }
-        state.energy = state.energy === 150 ? 200 : state.energy === 200 ? 250 : 150;
-        state.charged = false;
-        render("Режим: РУЧНИЙ", "Вибрану енергію змінено. Після зміни енергії заряд потрібно виконати знову.");
-        break;
+function setPosition(zone, p) {
+  zone.style.setProperty("--x", p.x + "%");
+  zone.style.setProperty("--y", p.y + "%");
+  zone.style.setProperty("--w", p.w + "%");
+  zone.style.setProperty("--h", p.h + "%");
+}
 
-      case "shock":
-        if (state.mode !== "manual" || !state.charged) {
-          render("РОЗРЯД ЗАБЛОКОВАНО", "У навчальній симуляції розряд доступний лише після заряджання в ручному режимі.");
-          return;
-        }
-        state.charged = false;
-        render("СИМУЛЬОВАНИЙ РОЗРЯД", "Навчальний розряд виконано. Для наступної спроби потрібне нове заряджання.");
-        break;
+function selectZone(id) {
+  selected = id;
+  zones.forEach(zone => zone.classList.toggle("selected", zone.dataset.id === id));
+  zoneSelect.value = id;
+  selectedName.textContent = names[id];
+  updateCoordinates();
+}
+
+function updateCoordinates() {
+  const p = readPosition(getZone(selected));
+  coordText.textContent =
+    `X: ${p.x.toFixed(2)}% · Y: ${p.y.toFixed(2)}% · W: ${p.w.toFixed(2)}% · H: ${p.h.toFixed(2)}%`;
+}
+
+function setEditing(value) {
+  editing = value;
+  wrap.classList.toggle("editing", editing);
+  editToggle.classList.toggle("active", editing);
+  editToggle.textContent = "Редагування зон: " + (editing ? "УВІМК." : "ВИМК.");
+  zones.forEach(zone => {
+    zone.style.pointerEvents = "auto";
+    zone.style.opacity = editing ? "1" : "0";
+    zone.style.borderColor = editing && zone.dataset.id === selected ? "#ffd34e" : "";
+  });
+  help.innerHTML = editing
+    ? "<strong>Режим налаштування</strong><p>Перетягуй вибрану зону на потрібний елемент. Жовтий квадратик змінює розмір.</p><p class='muted'>Координати поки зберігаються в цьому браузері.</p>"
+    : "<strong>Режим перевірки</strong><p>Клацни елемент на фото, щоб перевірити, яку зону він активує. Щоб пересунути зону, знову ввімкни редагування.</p>";
+}
+
+zones.forEach(zone => {
+  zone.addEventListener("pointerdown", event => {
+    if (!editing) return;
+    event.preventDefault();
+    selectZone(zone.dataset.id);
+
+    const isResize = event.target.classList.contains("resize");
+    const rect = wrap.getBoundingClientRect();
+    const p = readPosition(zone);
+
+    drag = {
+      zone,
+      isResize,
+      startX: event.clientX,
+      startY: event.clientY,
+      rect,
+      original: p
+    };
+
+    zone.setPointerCapture(event.pointerId);
+  });
+
+  zone.addEventListener("pointermove", event => {
+    if (!editing || !drag || drag.zone !== zone) return;
+    const dx = (event.clientX - drag.startX) / drag.rect.width * 100;
+    const dy = (event.clientY - drag.startY) / drag.rect.height * 100;
+    const p = {...drag.original};
+
+    if (drag.isResize) {
+      p.w = Math.max(2, Math.min(100 - p.x, p.w + dx));
+      p.h = Math.max(2, Math.min(100 - p.y, p.h + dy));
+    } else {
+      p.x = Math.max(0, Math.min(100 - p.w, p.x + dx));
+      p.y = Math.max(0, Math.min(100 - p.h, p.y + dy));
+    }
+
+    setPosition(zone, p);
+    updateCoordinates();
+  });
+
+  zone.addEventListener("pointerup", () => {
+    if (drag && drag.zone === zone) {
+      drag = null;
+      savePositions();
     }
   });
+
+  zone.addEventListener("pointercancel", () => { drag = null; });
+
+  zone.addEventListener("click", event => {
+    if (editing) {
+      event.preventDefault();
+      return;
+    }
+    testResult.textContent = "Натиснута зона: " + names[zone.dataset.id] +
+      ". Логіку дії підключимо окремим етапом.";
+  });
 });
+
+zoneSelect.addEventListener("change", () => selectZone(zoneSelect.value));
+
+editToggle.addEventListener("click", () => setEditing(!editing));
+
+document.getElementById("resetZones").addEventListener("click", () => {
+  zones.forEach(zone => setPosition(zone, initial[zone.dataset.id]));
+  savePositions();
+  selectZone(selected);
+  testResult.textContent = "Позиції зон повернуто до початкових.";
+});
+
+document.getElementById("exportZones").addEventListener("click", () => {
+  const positions = {};
+  zones.forEach(zone => positions[zone.dataset.id] = readPosition(zone));
+  testResult.textContent = JSON.stringify(positions, null, 2);
+});
+
+loadPositions();
+selectZone(selected);
+setEditing(true);
 </script>
 </body>
 </html>
-
 
