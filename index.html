@@ -116,9 +116,7 @@ body {
 h1 { font-size: 25px; margin: 0 0 18px; }
 h2 { font-size: 17px; margin: 22px 0 10px; }
 
-button, select {
-  font: inherit;
-}
+button, select { font: inherit; }
 
 .toolbar {
   display: flex;
@@ -158,6 +156,7 @@ button, select {
 .coordinates {
   color: #8bd5ff;
   font-family: monospace;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 700px) {
@@ -175,31 +174,31 @@ button, select {
       <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
 
       <button class="zone round" data-id="mode"
-        style="--x:73%;--y:16.5%;--w:15%;--h:18%"
+        style="--x:75.0054%;--y:19.1738%;--w:10.098%;--h:12.2067%"
         aria-label="Перемикач режимів" title="Перемикач режимів">
         РЕЖИМ<span class="resize"></span>
       </button>
 
       <button class="zone" data-id="analyze"
-        style="--x:67.3%;--y:33.5%;--w:6.5%;--h:4.5%"
+        style="--x:68.814%;--y:34.5836%;--w:5.5625%;--h:4.5%"
         aria-label="Аналіз" title="Аналіз">
         АНАЛІЗ<span class="resize"></span>
       </button>
 
       <button class="zone" data-id="charge"
-        style="--x:73%;--y:33.5%;--w:6.5%;--h:4.5%"
+        style="--x:74.5865%;--y:34.8462%;--w:5.3461%;--h:3.9231%"
         aria-label="Заряд" title="Заряд">
         ЗАРЯД<span class="resize"></span>
       </button>
 
       <button class="zone" data-id="energy"
-        style="--x:79%;--y:33.5%;--w:7%;--h:4.5%"
+        style="--x:80.0096%;--y:34.3654%;--w:5.7019%;--h:4.5%"
         aria-label="Вибір енергії" title="Вибір енергії">
         ЕНЕРГІЯ<span class="resize"></span>
       </button>
 
       <button class="zone round" data-id="shock"
-        style="--x:76.5%;--y:38.5%;--w:9%;--h:9%"
+        style="--x:79.0241%;--y:39.5577%;--w:6.4038%;--h:8.5192%"
         aria-label="Розряд" title="Розряд">
         РОЗРЯД<span class="resize"></span>
       </button>
@@ -232,10 +231,9 @@ button, select {
 
     <div class="info" id="help">
       <strong>Режим налаштування</strong>
-      <p>1. Вибери зону у списку або клацни її на фото.</p>
-      <p>2. Перетягни зону мишкою на потрібну кнопку.</p>
-      <p>3. Потягни жовтий квадратик у правому нижньому куті, щоб змінити розмір.</p>
-      <p class="muted">Координати зберігаються в цьому браузері. Після налаштування їх потрібно буде перенести в код, щоб вони працювали на інших пристроях.</p>
+      <p>Вибери зону зі списку або клацни її на фото.</p>
+      <p>Перетягни зону мишкою. Жовтий квадратик змінює її розмір.</p>
+      <p class="muted">Координати зберігаються в цьому браузері. Щоб закріпити нові координати для всіх, натисни «Показати координати» та перенеси їх у код.</p>
     </div>
 
     <div class="info">
@@ -245,7 +243,7 @@ button, select {
     </div>
 
     <div class="info muted" id="testResult" aria-live="polite">
-      Редактор готовий. Спочатку налаштуй положення зон.
+      Координати налаштовано. Логіку кнопок додамо наступним етапом.
     </div>
   </section>
 </main>
@@ -260,6 +258,8 @@ const coordText = document.getElementById("coordText");
 const help = document.getElementById("help");
 const testResult = document.getElementById("testResult");
 
+const STORAGE_KEY = "mediana-zone-positions-v2";
+
 const names = {
   mode: "Перемикач режимів",
   analyze: "АНАЛІЗ",
@@ -270,12 +270,7 @@ const names = {
 
 const initial = {};
 zones.forEach(zone => {
-  initial[zone.dataset.id] = {
-    x: parseFloat(zone.style.getPropertyValue("--x")),
-    y: parseFloat(zone.style.getPropertyValue("--y")),
-    w: parseFloat(zone.style.getPropertyValue("--w")),
-    h: parseFloat(zone.style.getPropertyValue("--h"))
-  };
+  initial[zone.dataset.id] = readPosition(zone);
 });
 
 let editing = true;
@@ -295,26 +290,6 @@ function readPosition(zone) {
   };
 }
 
-function savePositions() {
-  const positions = {};
-  zones.forEach(zone => positions[zone.dataset.id] = readPosition(zone));
-  try {
-    localStorage.setItem("mediana-zone-positions", JSON.stringify(positions));
-  } catch (_) {}
-}
-
-function loadPositions() {
-  try {
-    const saved = JSON.parse(localStorage.getItem("mediana-zone-positions") || "null");
-    if (!saved) return;
-    zones.forEach(zone => {
-      const p = saved[zone.dataset.id];
-      if (!p) return;
-      setPosition(zone, p);
-    });
-  } catch (_) {}
-}
-
 function setPosition(zone, p) {
   zone.style.setProperty("--x", p.x + "%");
   zone.style.setProperty("--y", p.y + "%");
@@ -322,9 +297,36 @@ function setPosition(zone, p) {
   zone.style.setProperty("--h", p.h + "%");
 }
 
+function savePositions() {
+  const positions = {};
+  zones.forEach(zone => {
+    positions[zone.dataset.id] = readPosition(zone);
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+  } catch (_) {}
+}
+
+function loadPositions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    if (!saved) return;
+
+    zones.forEach(zone => {
+      const p = saved[zone.dataset.id];
+      if (p) setPosition(zone, p);
+    });
+  } catch (_) {}
+}
+
 function selectZone(id) {
   selected = id;
-  zones.forEach(zone => zone.classList.toggle("selected", zone.dataset.id === id));
+
+  zones.forEach(zone => {
+    zone.classList.toggle("selected", zone.dataset.id === id);
+  });
+
   zoneSelect.value = id;
   selectedName.textContent = names[id];
   updateCoordinates();
@@ -332,34 +334,41 @@ function selectZone(id) {
 
 function updateCoordinates() {
   const p = readPosition(getZone(selected));
+
   coordText.textContent =
-    `X: ${p.x.toFixed(2)}% · Y: ${p.y.toFixed(2)}% · W: ${p.w.toFixed(2)}% · H: ${p.h.toFixed(2)}%`;
+    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
+    `W: ${p.w.toFixed(4)}% · H: ${p.h.toFixed(4)}%`;
 }
 
 function setEditing(value) {
   editing = value;
   wrap.classList.toggle("editing", editing);
+
   editToggle.classList.toggle("active", editing);
-  editToggle.textContent = "Редагування зон: " + (editing ? "УВІМК." : "ВИМК.");
+  editToggle.textContent =
+    "Редагування зон: " + (editing ? "УВІМК." : "ВИМК.");
+
   zones.forEach(zone => {
-    zone.style.pointerEvents = "auto";
     zone.style.opacity = editing ? "1" : "0";
-    zone.style.borderColor = editing && zone.dataset.id === selected ? "#ffd34e" : "";
+    zone.style.pointerEvents = "auto";
+    zone.style.borderColor =
+      editing && zone.dataset.id === selected ? "#ffd34e" : "";
   });
+
   help.innerHTML = editing
-    ? "<strong>Режим налаштування</strong><p>Перетягуй вибрану зону на потрібний елемент. Жовтий квадратик змінює розмір.</p><p class='muted'>Координати поки зберігаються в цьому браузері.</p>"
-    : "<strong>Режим перевірки</strong><p>Клацни елемент на фото, щоб перевірити, яку зону він активує. Щоб пересунути зону, знову ввімкни редагування.</p>";
+    ? "<strong>Режим налаштування</strong><p>Перетягни зону на потрібний елемент. Жовтий квадратик змінює розмір.</p><p class='muted'>Зміни зберігаються в цьому браузері.</p>"
+    : "<strong>Режим перевірки</strong><p>Зони приховані. Натискання перевіряє вибрану ділянку. Для редагування знову ввімкни режим налаштування.</p>";
 }
 
 zones.forEach(zone => {
   zone.addEventListener("pointerdown", event => {
     if (!editing) return;
+
     event.preventDefault();
     selectZone(zone.dataset.id);
 
     const isResize = event.target.classList.contains("resize");
     const rect = wrap.getBoundingClientRect();
-    const p = readPosition(zone);
 
     drag = {
       zone,
@@ -367,7 +376,8 @@ zones.forEach(zone => {
       startX: event.clientX,
       startY: event.clientY,
       rect,
-      original: p
+      original: readPosition(zone),
+      moved: false
     };
 
     zone.setPointerCapture(event.pointerId);
@@ -375,13 +385,19 @@ zones.forEach(zone => {
 
   zone.addEventListener("pointermove", event => {
     if (!editing || !drag || drag.zone !== zone) return;
+
     const dx = (event.clientX - drag.startX) / drag.rect.width * 100;
     const dy = (event.clientY - drag.startY) / drag.rect.height * 100;
+
+    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+      drag.moved = true;
+    }
+
     const p = {...drag.original};
 
     if (drag.isResize) {
-      p.w = Math.max(2, Math.min(100 - p.x, p.w + dx));
-      p.h = Math.max(2, Math.min(100 - p.y, p.h + dy));
+      p.w = Math.max(1, Math.min(100 - p.x, p.w + dx));
+      p.h = Math.max(1, Math.min(100 - p.y, p.h + dy));
     } else {
       p.x = Math.max(0, Math.min(100 - p.w, p.x + dx));
       p.y = Math.max(0, Math.min(100 - p.h, p.y + dy));
@@ -393,37 +409,49 @@ zones.forEach(zone => {
 
   zone.addEventListener("pointerup", () => {
     if (drag && drag.zone === zone) {
+      if (drag.moved) savePositions();
       drag = null;
-      savePositions();
     }
   });
 
-  zone.addEventListener("pointercancel", () => { drag = null; });
+  zone.addEventListener("pointercancel", () => {
+    drag = null;
+  });
 
   zone.addEventListener("click", event => {
     if (editing) {
       event.preventDefault();
       return;
     }
-    testResult.textContent = "Натиснута зона: " + names[zone.dataset.id] +
-      ". Логіку дії підключимо окремим етапом.";
+
+    testResult.textContent =
+      "Натиснута зона: " + names[zone.dataset.id] +
+      ". Логіку цієї дії підключимо окремим етапом.";
   });
 });
 
-zoneSelect.addEventListener("change", () => selectZone(zoneSelect.value));
+zoneSelect.addEventListener("change", () => {
+  selectZone(zoneSelect.value);
+});
 
-editToggle.addEventListener("click", () => setEditing(!editing));
+editToggle.addEventListener("click", () => {
+  setEditing(!editing);
+});
 
 document.getElementById("resetZones").addEventListener("click", () => {
   zones.forEach(zone => setPosition(zone, initial[zone.dataset.id]));
   savePositions();
   selectZone(selected);
-  testResult.textContent = "Позиції зон повернуто до початкових.";
+  testResult.textContent = "Позиції повернуто до координат, записаних у коді.";
 });
 
 document.getElementById("exportZones").addEventListener("click", () => {
   const positions = {};
-  zones.forEach(zone => positions[zone.dataset.id] = readPosition(zone));
+
+  zones.forEach(zone => {
+    positions[zone.dataset.id] = readPosition(zone);
+  });
+
   testResult.textContent = JSON.stringify(positions, null, 2);
 });
 
