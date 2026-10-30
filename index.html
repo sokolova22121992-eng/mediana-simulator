@@ -736,8 +736,7 @@ runtimeDisplay.addEventListener("pointerdown", (event) => {
 runtimeDisplay.addEventListener("pointermove", (event) => {
   if (!timerDragging) return;
 
-  const deviceWrap = document.querySelector(".device-wrap");
-  const rect = deviceWrap.getBoundingClientRect();
+  const rect = wrap.getBoundingClientRect();
 
   const x = event.clientX - rect.left - timerDragOffsetX;
   const y = event.clientY - rect.top - timerDragOffsetY;
