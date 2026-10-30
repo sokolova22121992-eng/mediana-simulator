@@ -721,6 +721,12 @@ runtimeDisplay.addEventListener("pointermove", (event) => {
 
   runtimeDisplay.style.left = (x / rect.width * 100) + "%";
   runtimeDisplay.style.top = (y / rect.height * 100) + "%";
+
+  console.log(
+    "Координати таймера:",
+    "left:", runtimeDisplay.style.left,
+    "top:", runtimeDisplay.style.top
+  );
 });
 
 runtimeDisplay.addEventListener("pointerup", () => {
