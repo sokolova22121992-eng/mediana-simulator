@@ -52,7 +52,27 @@ body {
   object-fit: contain;
   pointer-events: none;
 }
+.runtime-display {
+  position: absolute;
+  left: 48.7%;
+  top: 21.7%;
+  width: 6.5%;
+  height: 3.1%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #07111d;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: clamp(8px, 1.05vw, 16px);
+  font-weight: bold;
+  z-index: 2;
+  pointer-events: none;
+}
 
+.runtime-display.visible {
+  display: flex;
+}
 .zone {
   position: absolute;
   left: var(--x);
@@ -176,6 +196,7 @@ button, select { font: inherit; }
     <div class="device-wrap" id="deviceWrap">
 
       <img id="deviceImage" src="mediana-base.png" alt="Дефібрилятор MEDIANA">
+      <div id="runtimeDisplay" class="runtime-display">00:00</div>
 
       <!-- Перемикач режимів -->
       <button class="zone round" data-id="mode"
@@ -356,6 +377,45 @@ const selectedName = document.getElementById("selectedName");
 const coordText = document.getElementById("coordText");
 const help = document.getElementById("help");
 const testResult = document.getElementById("testResult");
+  const runtimeDisplay = document.getElementById("runtimeDisplay");
+
+let runtimeStartedAt = null;
+let runtimeInterval = null;
+
+function updateRuntimeTimer() {
+  if (runtimeStartedAt === null) return;
+
+  const seconds = Math.floor(
+    (Date.now() - runtimeStartedAt) / 1000
+  );
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  runtimeDisplay.textContent =
+    String(minutes).padStart(2, "0") + ":" +
+    String(remainingSeconds).padStart(2, "0");
+}
+
+function syncRuntimeTimer(state) {
+  if (state.power) {
+    if (runtimeStartedAt === null) {
+      runtimeStartedAt = Date.now();
+      runtimeDisplay.textContent = "00:00";
+      runtimeDisplay.classList.add("visible");
+      runtimeInterval = setInterval(updateRuntimeTimer, 1000);
+    }
+  } else {
+    if (runtimeInterval !== null) {
+      clearInterval(runtimeInterval);
+      runtimeInterval = null;
+    }
+
+    runtimeStartedAt = null;
+    runtimeDisplay.textContent = "00:00";
+    runtimeDisplay.classList.remove("visible");
+  }
+}
 
 // Нова версія сховища: старі координати v2 не перекриватимуть HTML.
 const STORAGE_KEY = "mediana-zone-positions-v3";
@@ -612,9 +672,13 @@ function renderDeviceState(state) {
   }
 }
 
-subscribe(renderDeviceState);
+subscribe(state => {
+  renderDeviceState(state);
+  syncRuntimeTimer(state);
+});
 
 renderDeviceState(getState());
+syncRuntimeTimer(getState());
 
 const modeZone = document.querySelector('[data-id="mode"]');
 
