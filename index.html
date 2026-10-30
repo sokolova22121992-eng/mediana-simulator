@@ -179,6 +179,7 @@ button, select { font: inherit; }
         РЕЖИМ<span class="resize"></span>
       </button>
 
+      
       <button class="zone" data-id="analyze"
         style="--x:68.814%;--y:34.5836%;--w:5.5625%;--h:4.5%"
         aria-label="Аналіз" title="Аналіз">
@@ -202,48 +203,75 @@ button, select { font: inherit; }
         aria-label="Розряд" title="Розряд">
         РОЗРЯД<span class="resize"></span>
       </button>
-      <!-- П'ять програмних кнопок під дисплеєм -->
-<button class="zone" data-zone="softkey1"
-style="--x:18.5773%;--y:63.7201%;--w:5.3867%;--h:2.6703%;">КНОПКА 1</button>
 
-<button class="zone" data-zone="softkey2"
-style="--x:27.8315%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 2</button>
+      <!-- П'ять програмних кнопок -->
+      <button class="zone" data-id="softkey1"
+        style="--x:18.5773%;--y:63.7201%;--w:5.3867%;--h:2.6703%">
+        КНОПКА 1<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="softkey3"
-style="--x:37.2928%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 3</button>
+      <button class="zone" data-id="softkey2"
+        style="--x:27.8315%;--y:63.7201%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 2<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="softkey4"
-style="--x:46.6851%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 4</button>
+      <button class="zone" data-id="softkey3"
+        style="--x:37.2928%;--y:63.7201%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 3<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="softkey5"
-style="--x:56.0773%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 5</button>
+      <button class="zone" data-id="softkey4"
+        style="--x:46.6851%;--y:63.7201%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 4<span class="resize"></span>
+      </button>
 
-<!-- Поворотна ручка -->
-<button class="zone round" data-zone="dial"
-style="--x:70.5801%;--y:46.6851%;--w:10.7735%;--h:12.8913%;">РУЧКА</button>
+      <button class="zone" data-id="softkey5"
+        style="--x:56.0773%;--y:63.7201%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 5<span class="resize"></span>
+      </button>
 
-<!-- Кнопки стимулятора -->
-<button class="zone" data-zone="power"
-style="--x:67.2652%;--y:60.4052%;--w:4.8343%;--h:3.8674%;">ПОТУЖНІСТЬ</button>
+      <!-- Поворотна ручка -->
+      <button class="zone round" data-id="dial"
+        style="--x:70.5801%;--y:46.6851%;--w:10.7735%;--h:12.8913%">
+        РУЧКА<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="ma"
-style="--x:72.6519%;--y:60.4052%;--w:5.6630%;--h:3.8674%;">mA</button>
+      <!-- Кнопки стимулятора -->
+      <button class="zone" data-id="power"
+        style="--x:67.2652%;--y:60.4052%;--w:4.8343%;--h:3.8674%">
+        ПОТУЖНІСТЬ<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="nibp"
-style="--x:78.7983%;--y:60.4052%;--w:4.5580%;--h:3.8674%;">НИАД</button>
+      <button class="zone" data-id="ma"
+        style="--x:72.6519%;--y:60.4052%;--w:5.6630%;--h:3.8674%">
+        mA<span class="resize"></span>
+      </button>
 
-<!-- Нижній ряд -->
-<button class="zone" data-zone="print"
-style="--x:67.2652%;--y:65.0092%;--w:3.7983%;--h:4.6041%;">ПЕЧАТЬ</button>
+      <button class="zone" data-id="nibp"
+        style="--x:78.7983%;--y:60.4052%;--w:4.5580%;--h:3.8674%">
+        НІАД<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="alarms"
-style="--x:71.4779%;--y:65.0092%;--w:3.7983%;--h:4.6041%;">ТРЕВОГИ</button>
+      <!-- Нижній ряд -->
+      <button class="zone" data-id="print"
+        style="--x:67.2652%;--y:65.0092%;--w:3.7983%;--h:4.6041%">
+        ДРУК<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="lead"
-style="--x:75.7597%;--y:65.0092%;--w:3.7293%;--h:4.6041%;">ОТВОД</button>
+      <button class="zone" data-id="alarms"
+        style="--x:71.4779%;--y:65.0092%;--w:3.7983%;--h:4.6041%">
+        ТРИВОГИ<span class="resize"></span>
+      </button>
 
-<button class="zone" data-zone="mute"
-style="--x:79.9033%;--y:65.0092%;--w:3.4530%;--h:4.6041%;">МШТБ</button>
+      <button class="zone" data-id="lead"
+        style="--x:75.7597%;--y:65.0092%;--w:3.7293%;--h:4.6041%">
+        ВІДВЕДЕННЯ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="mute"
+        style="--x:79.9033%;--y:65.0092%;--w:3.453%;--h:4.6041%">
+        МШТБ<span class="resize"></span>
+      </button>
     </div>
   </section>
 
@@ -269,6 +297,19 @@ style="--x:79.9033%;--y:65.0092%;--w:3.4530%;--h:4.6041%;">МШТБ</button>
       <option value="charge">ЗАРЯД</option>
       <option value="energy">ВИБІР ЕНЕРГІЇ</option>
       <option value="shock">РОЗРЯД</option>
+      <option value="softkey1">Програмна кнопка 1</option>
+      <option value="softkey2">Програмна кнопка 2</option>
+      <option value="softkey3">Програмна кнопка 3</option>
+      <option value="softkey4">Програмна кнопка 4</option>
+      <option value="softkey5">Програмна кнопка 5</option>
+      <option value="dial">Поворотна ручка</option>
+      <option value="power">Потужність</option>
+      <option value="ma">mA</option>
+      <option value="nibp">НІАД</option>
+      <option value="print">Друк</option>
+      <option value="alarms">Тривоги</option>
+      <option value="lead">Відведення</option>
+      <option value="mute">МШТБ</option>
     </select>
 
     <div class="info" id="help">
@@ -301,7 +342,6 @@ const help = document.getElementById("help");
 const testResult = document.getElementById("testResult");
 
 const STORAGE_KEY = "mediana-zone-positions-v2";
-
 
 const names = {
   mode: "Перемикач режимів",
