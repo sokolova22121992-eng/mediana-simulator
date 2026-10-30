@@ -1,15 +1,16 @@
 
 /**
  * MEDIANA D500 Simulator
- * Модуль керування режимами роботи.
+ * Керування перемикачем режимів і живленням.
  */
 
 import {
   getState,
-  setMode
+  setPower,
+  setMode,
+  setMessage
 } from "./device-state.js";
 
-// Доступні режими симулятора
 export const MODES = {
   OFF: "off",
   MONITOR: "monitor",
@@ -18,45 +19,62 @@ export const MODES = {
   PACING: "pacing"
 };
 
-// Назви режимів для інтерфейсу
 export const MODE_NAMES = {
-  off: "OFF",
-  monitor: "MONITOR",
-  manual: "MANUAL",
-  aed: "AED",
-  pacing: "PACING"
+  off: "ВИМКНЕНО",
+  monitor: "МОНІТОРИНГ",
+  manual: "РУЧНИЙ РЕЖИМ",
+  aed: "АВТОМАТИЧНА ДЕФІБРИЛЯЦІЯ",
+  pacing: "КАРДІОСТИМУЛЯЦІЯ"
 };
 
 /**
- * Перемикання режиму.
+ * Повертає пристрій у вимкнений стан.
+ */
+export function turnOff() {
+  setPower(false);
+
+  return getState();
+}
+
+/**
+ * Вибирає режим роботи пристрою.
  */
 export function selectMode(mode) {
   if (!Object.values(MODES).includes(mode)) {
     throw new Error("Невідомий режим: " + mode);
   }
 
-  const state = getState();
-
-  if (mode !== MODES.OFF && !state.power) {
-    throw new Error("Спочатку потрібно увімкнути пристрій");
+  // Положення OFF
+  if (mode === MODES.OFF) {
+    return turnOff();
   }
 
+  // Перевіряємо живлення
+  const state = getState();
+
+  // Перехід із OFF автоматично вмикає пристрій
+  if (!state.power) {
+    setPower(true);
+  }
+
+  // Встановлюємо вибраний режим
   setMode(mode);
 
-  return {
-    success: true,
-    mode,
-    name: MODE_NAMES[mode]
-  };
+  setMessage(
+    "Пристрій увімкнений. Режим: " + MODE_NAMES[mode]
+  );
+
+  return getState();
 }
 
 /**
- * Повертає інформацію про поточний режим.
+ * Інформація про поточний режим.
  */
 export function getCurrentMode() {
   const state = getState();
 
   return {
+    power: state.power,
     mode: state.mode,
     name: MODE_NAMES[state.mode] || "Невідомий режим"
   };
