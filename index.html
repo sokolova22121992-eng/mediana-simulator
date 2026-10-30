@@ -68,6 +68,20 @@ body {
   font-weight: bold;
   z-index: 2;
   pointer-events: none;
+  cursor: default;
+  user-select: none;
+}
+
+.runtime-display.visible {
+  display: flex;
+}
+
+.runtime-display.editing {
+  display: flex;
+  outline: 2px dashed #00aaff;
+  cursor: move;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .runtime-display.visible {
@@ -665,7 +679,57 @@ loadPositions();
 selectZone(selected);
 setEditing(true);
   const deviceImage = document.getElementById("deviceImage");
+  const editTimerBtn = document.getElementById("editTimerBtn");
 
+let timerEditing = false;
+
+editTimerBtn.addEventListener("click", () => {
+  timerEditing = !timerEditing;
+
+  runtimeDisplay.classList.toggle("editing", timerEditing);
+
+  editTimerBtn.textContent = timerEditing
+    ? "Завершити налаштування таймера"
+    : "Налаштувати таймер";
+});
+let timerDragging = false;
+let timerDragOffsetX = 0;
+let timerDragOffsetY = 0;
+
+runtimeDisplay.addEventListener("pointerdown", (event) => {
+  if (!timerEditing) return;
+
+  timerDragging = true;
+
+  const rect = runtimeDisplay.getBoundingClientRect();
+
+  timerDragOffsetX = event.clientX - rect.left;
+  timerDragOffsetY = event.clientY - rect.top;
+
+  runtimeDisplay.setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+
+runtimeDisplay.addEventListener("pointermove", (event) => {
+  if (!timerDragging) return;
+
+  const deviceWrap = document.querySelector(".device-wrap");
+  const rect = deviceWrap.getBoundingClientRect();
+
+  const x = event.clientX - rect.left - timerDragOffsetX;
+  const y = event.clientY - rect.top - timerDragOffsetY;
+
+  runtimeDisplay.style.left = (x / rect.width * 100) + "%";
+  runtimeDisplay.style.top = (y / rect.height * 100) + "%";
+});
+
+runtimeDisplay.addEventListener("pointerup", () => {
+  timerDragging = false;
+});
+
+runtimeDisplay.addEventListener("pointercancel", () => {
+  timerDragging = false;
+});
 function renderDeviceState(state) {
   if (state.power && state.mode === MODES.MANUAL) {
     deviceImage.src = "mediana-manual.png";
