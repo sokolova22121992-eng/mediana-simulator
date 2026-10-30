@@ -302,17 +302,33 @@ const testResult = document.getElementById("testResult");
 
 const STORAGE_KEY = "mediana-zone-positions-v2";
 
+
 const names = {
   mode: "Перемикач режимів",
   analyze: "АНАЛІЗ",
   charge: "ЗАРЯД",
   energy: "ВИБІР ЕНЕРГІЇ",
-  shock: "РОЗРЯД"
+  shock: "РОЗРЯД",
+  softkey1: "Програмна кнопка 1",
+  softkey2: "Програмна кнопка 2",
+  softkey3: "Програмна кнопка 3",
+  softkey4: "Програмна кнопка 4",
+  softkey5: "Програмна кнопка 5",
+  dial: "Поворотна ручка",
+  power: "Потужність",
+  ma: "mA",
+  nibp: "НІАД",
+  print: "Друк",
+  alarms: "Тривоги",
+  lead: "Відведення",
+  mute: "МШТБ"
 };
 
 const initial = {};
+
 zones.forEach(zone => {
-  initial[zone.dataset.id] = readPosition(zone);
+  const id = zone.dataset.id;
+  if (id) initial[id] = readPosition(zone);
 });
 
 let editing = true;
@@ -341,41 +357,59 @@ function setPosition(zone, p) {
 
 function savePositions() {
   const positions = {};
+
   zones.forEach(zone => {
-    positions[zone.dataset.id] = readPosition(zone);
+    const id = zone.dataset.id;
+    if (id) positions[id] = readPosition(zone);
   });
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
-  } catch (_) {}
+  } catch (error) {
+    console.error("Не вдалося зберегти координати:", error);
+  }
 }
 
 function loadPositions() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+    const saved = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || "null"
+    );
+
     if (!saved) return;
 
     zones.forEach(zone => {
-      const p = saved[zone.dataset.id];
+      const id = zone.dataset.id;
+      const p = id ? saved[id] : null;
+
       if (p) setPosition(zone, p);
     });
-  } catch (_) {}
+  } catch (error) {
+    console.error("Не вдалося завантажити координати:", error);
+  }
 }
 
 function selectZone(id) {
+  const zone = getZone(id);
+  if (!zone) return;
+
   selected = id;
 
-  zones.forEach(zone => {
-    zone.classList.toggle("selected", zone.dataset.id === id);
+  zones.forEach(item => {
+    item.classList.toggle("selected", item.dataset.id === id);
   });
 
   zoneSelect.value = id;
-  selectedName.textContent = names[id];
+  selectedName.textContent = names[id] || id;
+
   updateCoordinates();
 }
 
 function updateCoordinates() {
-  const p = readPosition(getZone(selected));
+  const zone = getZone(selected);
+  if (!zone) return;
+
+  const p = readPosition(zone);
 
   coordText.textContent =
     `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
@@ -428,14 +462,16 @@ zones.forEach(zone => {
   zone.addEventListener("pointermove", event => {
     if (!editing || !drag || drag.zone !== zone) return;
 
-    const dx = (event.clientX - drag.startX) / drag.rect.width * 100;
-    const dy = (event.clientY - drag.startY) / drag.rect.height * 100;
+    const dx =
+      (event.clientX - drag.startX) / drag.rect.width * 100;
+    const dy =
+      (event.clientY - drag.startY) / drag.rect.height * 100;
 
     if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
       drag.moved = true;
     }
 
-    const p = {...drag.original};
+    const p = { ...drag.original };
 
     if (drag.isResize) {
       p.w = Math.max(1, Math.min(100 - p.x, p.w + dx));
@@ -467,7 +503,8 @@ zones.forEach(zone => {
     }
 
     testResult.textContent =
-      "Натиснута зона: " + names[zone.dataset.id] +
+      "Натиснута зона: " +
+      (names[zone.dataset.id] || zone.dataset.id) +
       ". Логіку цієї дії підключимо окремим етапом.";
   });
 });
@@ -481,17 +518,24 @@ editToggle.addEventListener("click", () => {
 });
 
 document.getElementById("resetZones").addEventListener("click", () => {
-  zones.forEach(zone => setPosition(zone, initial[zone.dataset.id]));
+  zones.forEach(zone => {
+    const id = zone.dataset.id;
+    if (initial[id]) setPosition(zone, initial[id]);
+  });
+
   savePositions();
   selectZone(selected);
-  testResult.textContent = "Позиції повернуто до координат, записаних у коді.";
+
+  testResult.textContent =
+    "Позиції повернуто до координат, записаних у коді.";
 });
 
 document.getElementById("exportZones").addEventListener("click", () => {
   const positions = {};
 
   zones.forEach(zone => {
-    positions[zone.dataset.id] = readPosition(zone);
+    const id = zone.dataset.id;
+    if (id) positions[id] = readPosition(zone);
   });
 
   testResult.textContent = JSON.stringify(positions, null, 2);
@@ -501,6 +545,3 @@ loadPositions();
 selectZone(selected);
 setEditing(true);
 </script>
-</body>
-</html>
-
