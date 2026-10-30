@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MEDIANA Simulator — редактор зон</title>
+
 <style>
 * { box-sizing: border-box; }
 
@@ -167,19 +168,23 @@ button, select { font: inherit; }
 }
 </style>
 </head>
+
 <body>
 <main class="simulator">
+
   <section class="device-area">
     <div class="device-wrap" id="deviceWrap">
+
       <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
 
+      <!-- Перемикач режимів -->
       <button class="zone round" data-id="mode"
         style="--x:75.0054%;--y:19.1738%;--w:10.098%;--h:12.2067%"
         aria-label="Перемикач режимів" title="Перемикач режимів">
         РЕЖИМ<span class="resize"></span>
       </button>
 
-      
+      <!-- Основні кнопки -->
       <button class="zone" data-id="analyze"
         style="--x:68.814%;--y:34.5836%;--w:5.5625%;--h:4.5%"
         aria-label="Аналіз" title="Аналіз">
@@ -204,7 +209,6 @@ button, select { font: inherit; }
         РОЗРЯД<span class="resize"></span>
       </button>
 
-      
       <!-- П'ять програмних кнопок -->
       <button class="zone" data-id="softkey1"
         style="--x:19.1343439891%;--y:65.6512157632%;--w:5.3867%;--h:2.6703%">
@@ -273,6 +277,7 @@ button, select { font: inherit; }
         style="--x:82.1314810562%;--y:66.9403089632%;--w:3.453%;--h:4.6041%">
         МШТБ<span class="resize"></span>
       </button>
+
     </div>
   </section>
 
@@ -283,15 +288,18 @@ button, select { font: inherit; }
       <button id="editToggle" class="tool-button active">
         Редагування зон: УВІМК.
       </button>
+
       <button id="resetZones" class="tool-button">
         Скинути позиції
       </button>
+
       <button id="exportZones" class="tool-button">
         Показати координати
       </button>
     </div>
 
     <h2>Вибір зони</h2>
+
     <select id="zoneSelect" style="width:100%">
       <option value="mode">Перемикач режимів</option>
       <option value="analyze">АНАЛІЗ</option>
@@ -317,7 +325,11 @@ button, select { font: inherit; }
       <strong>Режим налаштування</strong>
       <p>Вибери зону зі списку або клацни її на фото.</p>
       <p>Перетягни зону мишкою. Жовтий квадратик змінює її розмір.</p>
-      <p class="muted">Координати зберігаються в цьому браузері. Щоб закріпити нові координати для всіх, натисни «Показати координати» та перенеси їх у код.</p>
+      <p class="muted">
+        Координати зберігаються в цьому браузері.
+        Для закріплення координат для всіх користувачів
+        вони записані безпосередньо в HTML.
+      </p>
     </div>
 
     <div class="info">
@@ -330,6 +342,7 @@ button, select { font: inherit; }
       Координати налаштовано. Логіку кнопок додамо наступним етапом.
     </div>
   </section>
+
 </main>
 
 <script>
@@ -342,7 +355,8 @@ const coordText = document.getElementById("coordText");
 const help = document.getElementById("help");
 const testResult = document.getElementById("testResult");
 
-const STORAGE_KEY = "mediana-zone-positions-v2";
+// Нова версія сховища: старі координати v2 не перекриватимуть HTML.
+const STORAGE_KEY = "mediana-zone-positions-v3";
 
 const names = {
   mode: "Перемикач режимів",
@@ -365,7 +379,7 @@ const names = {
   mute: "МШТБ"
 };
 
-
+// Початкові координати з HTML.
 const initial = {};
 
 zones.forEach(zone => {
@@ -587,3 +601,6 @@ loadPositions();
 selectZone(selected);
 setEditing(true);
 </script>
+
+</body>
+</html>
