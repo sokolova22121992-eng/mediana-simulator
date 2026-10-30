@@ -38,9 +38,9 @@ body {
 
 .device-wrap {
   position: relative;
-  width: min(100%, 128vh);
+  width: min(100%, calc(96vh * 1448 / 1086));
   aspect-ratio: 1448 / 1086;
-  flex: 0 1 auto;
+  height: auto;
 }
 
 .device-wrap img {
@@ -202,6 +202,48 @@ button, select { font: inherit; }
         aria-label="Розряд" title="Розряд">
         РОЗРЯД<span class="resize"></span>
       </button>
+      <!-- П'ять програмних кнопок під дисплеєм -->
+<button class="zone" data-zone="softkey1"
+style="--x:18.5773%;--y:63.7201%;--w:5.3867%;--h:2.6703%;">КНОПКА 1</button>
+
+<button class="zone" data-zone="softkey2"
+style="--x:27.8315%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 2</button>
+
+<button class="zone" data-zone="softkey3"
+style="--x:37.2928%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 3</button>
+
+<button class="zone" data-zone="softkey4"
+style="--x:46.6851%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 4</button>
+
+<button class="zone" data-zone="softkey5"
+style="--x:56.0773%;--y:63.7201%;--w:5.4558%;--h:2.6703%;">КНОПКА 5</button>
+
+<!-- Поворотна ручка -->
+<button class="zone round" data-zone="dial"
+style="--x:70.5801%;--y:46.6851%;--w:10.7735%;--h:12.8913%;">РУЧКА</button>
+
+<!-- Кнопки стимулятора -->
+<button class="zone" data-zone="power"
+style="--x:67.2652%;--y:60.4052%;--w:4.8343%;--h:3.8674%;">ПОТУЖНІСТЬ</button>
+
+<button class="zone" data-zone="ma"
+style="--x:72.6519%;--y:60.4052%;--w:5.6630%;--h:3.8674%;">mA</button>
+
+<button class="zone" data-zone="nibp"
+style="--x:78.7983%;--y:60.4052%;--w:4.5580%;--h:3.8674%;">НИАД</button>
+
+<!-- Нижній ряд -->
+<button class="zone" data-zone="print"
+style="--x:67.2652%;--y:65.0092%;--w:3.7983%;--h:4.6041%;">ПЕЧАТЬ</button>
+
+<button class="zone" data-zone="alarms"
+style="--x:71.4779%;--y:65.0092%;--w:3.7983%;--h:4.6041%;">ТРЕВОГИ</button>
+
+<button class="zone" data-zone="lead"
+style="--x:75.7597%;--y:65.0092%;--w:3.7293%;--h:4.6041%;">ОТВОД</button>
+
+<button class="zone" data-zone="mute"
+style="--x:79.9033%;--y:65.0092%;--w:3.4530%;--h:4.6041%;">МШТБ</button>
     </div>
   </section>
 
