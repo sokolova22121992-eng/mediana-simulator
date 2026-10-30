@@ -175,7 +175,7 @@ button, select { font: inherit; }
   <section class="device-area">
     <div class="device-wrap" id="deviceWrap">
 
-      <img src="mediana-base.png" alt="Дефібрилятор MEDIANA">
+      <img id="deviceImage" src="mediana-base.png" alt="Дефібрилятор MEDIANA">
 
       <!-- Перемикач режимів -->
       <button class="zone round" data-id="mode"
@@ -345,7 +345,9 @@ button, select { font: inherit; }
 
 </main>
 
-<script>
+<script type="module">
+import { getState, subscribe } from "./js/device-state.js";
+import { selectMode, MODES } from "./js/mode-control.js";
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
 const editToggle = document.getElementById("editToggle");
@@ -600,6 +602,35 @@ document.getElementById("exportZones").addEventListener("click", () => {
 loadPositions();
 selectZone(selected);
 setEditing(true);
+  const deviceImage = document.getElementById("deviceImage");
+
+function renderDeviceState(state) {
+  if (state.power && state.mode === MODES.MANUAL) {
+    deviceImage.src = "mediana-manual.png";
+  } else {
+    deviceImage.src = "mediana-base.png";
+  }
+}
+
+subscribe(renderDeviceState);
+
+renderDeviceState(getState());
+
+const modeZone = document.querySelector('[data-id="mode"]');
+
+modeZone.addEventListener("click", () => {
+  if (editing) return;
+
+  const state = getState();
+
+  if (state.power && state.mode === MODES.MANUAL) {
+    selectMode(MODES.OFF);
+    testResult.textContent = "Пристрій вимкнено.";
+  } else {
+    selectMode(MODES.MANUAL);
+    testResult.textContent = "MEDIANA увімкнено. Режим РУЧНОЙ.";
+  }
+});
 </script>
 
 </body>
