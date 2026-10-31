@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDIANA Simulator — редактор зон</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: #111820;
+  color: #e8edf2;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.simulator {
+  display: grid;
+  grid-template-columns: 48% 52%;
+  width: 100%;
+  height: 100vh;
+}
+
+.device-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px;
+}
+
+.device-wrap {
+  position: relative;
+  width: min(100%, calc(96vh * 1448 / 1086));
+  aspect-ratio: 1448 / 1086;
+  height: auto;
+}
+
+.device-wrap img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.runtime-display {
+  position: absolute;
+ left: 48.9207%;
+top: 22.8832%;
+width: 6.0%;
+height: 3.0986%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: #07111d;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: clamp(8px, 1.05vw, 16px);
+  font-weight: bold;
+  z-index: 2;
+  pointer-events: none;
+  cursor: default;
+  user-select: none;
+}
+
+.runtime-display.visible {
+  display: flex;
+}
+
+.runtime-display.editing {
+  display: flex;
+  outline: 2px dashed #00aaff;
+  cursor: move;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.runtime-display.visible {
+  display: flex;
+}
+.zone {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
+  border: 2px solid #35b8ff;
+  border-radius: 8px;
+  background: #35b8ff33;
+  color: white;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: clamp(8px, 0.75vw, 12px);
+  font-weight: bold;
+  text-shadow: 0 1px 3px #000;
+  touch-action: none;
+  user-select: none;
+}
+
+.zone.selected {
+  border-color: #ffd34e;
+  background: #ffd34e44;
+  z-index: 3;
+}
+
+.zone.round {
+  border-radius: 50%;
+}
+
+.editing .zone {
+  cursor: move;
+}
+
+.zone .resize {
+  display: none;
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #111820;
+  border-radius: 3px;
+  background: #ffd34e;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.editing .zone.selected .resize {
+  display: block;
+}
+
+.workspace {
+  min-width: 0;
+  overflow: auto;
+  border-left: 1px solid #34404c;
+  padding: 24px;
+  background: #111820;
+}
+
+h1 { font-size: 25px; margin: 0 0 18px; }
+h2 { font-size: 17px; margin: 22px 0 10px; }
+
+button, select { font: inherit; }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-button, select {
+  color: white;
+  background: #263746;
+  border: 1px solid #526576;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.tool-button.active {
+  background: #176b9c;
+  border-color: #65caff;
+}
+
+.info {
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid #34404c;
+  border-radius: 10px;
+  background: #192631;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  color: #aab9c7;
+  font-size: 13px;
+}
+
+.coordinates {
+  color: #8bd5ff;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .simulator { grid-template-columns: 58% 42%; }
+  .workspace { padding: 10px; }
+  h1 { font-size: 18px; }
+  .tool-button, select { font-size: 12px; padding: 8px; }
+}
+</style>
+</head>
+
+<body>
+<main class="simulator">
+
+  <section class="device-area">
+    <div class="device-wrap" id="deviceWrap">
+
+      <img id="deviceImage" src="mediana-base.png" alt="Дефібрилятор MEDIANA">
+      <div id="runtimeDisplay" class="runtime-display">00:00</div>
+
+      <!-- Перемикач режимів -->
+      <button class="zone round" data-id="mode"
+        style="--x:75.0054%;--y:19.1738%;--w:10.098%;--h:12.2067%"
+        aria-label="Перемикач режимів" title="Перемикач режимів">
+        РЕЖИМ<span class="resize"></span>
+      </button>
+
+      <!-- Основні кнопки -->
+      <button class="zone" data-id="analyze"
+        style="--x:68.814%;--y:34.5836%;--w:5.5625%;--h:4.5%"
+        aria-label="Аналіз" title="Аналіз">
+        АНАЛІЗ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="charge"
+        style="--x:74.5865%;--y:34.8462%;--w:5.3461%;--h:3.9231%"
+        aria-label="Заряд" title="Заряд">
+        ЗАРЯД<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="energy"
+        style="--x:80.0096%;--y:34.3654%;--w:5.7019%;--h:4.5%"
+        aria-label="Вибір енергії" title="Вибір енергії">
+        ЕНЕРГІЯ<span class="resize"></span>
+      </button>
+
+      <button class="zone round" data-id="shock"
+        style="--x:79.0241%;--y:39.5577%;--w:6.4038%;--h:8.5192%"
+        aria-label="Розряд" title="Розряд">
+        РОЗРЯД<span class="resize"></span>
+      </button>
+
+      <!-- П'ять програмних кнопок -->
+      <button class="zone" data-id="softkey1"
+        style="--x:19.1343439891%;--y:65.6512157632%;--w:5.3867%;--h:2.6703%">
+        КНОПКА 1<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="softkey2"
+        style="--x:28.8341807103%;--y:65.6512089632%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 2<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="softkey3"
+        style="--x:38.2954807103%;--y:65.6512157632%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 3<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="softkey4"
+        style="--x:48.1334148816%;--y:65.6512089632%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 4<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="softkey5"
+        style="--x:57.7484345171%;--y:65.7997537143%;--w:5.4558%;--h:2.6703%">
+        КНОПКА 5<span class="resize"></span>
+      </button>
+
+      <!-- Поворотна ручка -->
+      <button class="zone round" data-id="dial"
+        style="--x:72.919688324%;--y:48.1705679102%;--w:10.3278658287%;--h:12.8913%">
+        РУЧКА<span class="resize"></span>
+      </button>
+
+      <!-- Кнопки стимулятора -->
+      <button class="zone" data-id="power"
+        style="--x:69.2705665205%;--y:61.8906747101%;--w:5.2799341713%;--h:4.3130410531%">
+        ПОТУЖНІСТЬ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="ma"
+        style="--x:74.8800759563%;--y:61.8906679102%;--w:5.663%;--h:3.8674%">
+        mA<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="nibp"
+        style="--x:81.1378832241%;--y:62.0392194612%;--w:4.558%;--h:4.164496302%">
+        НІАД<span class="resize"></span>
+      </button>
+
+      <!-- Нижній ряд -->
+      <button class="zone" data-id="print"
+        style="--x:69.1591541527%;--y:66.7917642122%;--w:3.7983%;--h:4.6041%">
+        ДРУК<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="alarms"
+        style="--x:73.5946686884%;--y:66.9403089632%;--w:3.7983%;--h:4.6041%">
+        ТРИВОГИ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="lead"
+        style="--x:77.8764686884%;--y:66.7917642122%;--w:3.7293%;--h:4.6041%">
+        ВІДВЕДЕННЯ<span class="resize"></span>
+      </button>
+
+      <button class="zone" data-id="mute"
+        style="--x:82.1314810562%;--y:66.9403089632%;--w:3.453%;--h:4.6041%">
+        МШТБ<span class="resize"></span>
+      </button>
+
+    </div>
+  </section>
+
+  <section class="workspace">
+    <h1>MEDIANA Simulator</h1>
+
+    <div class="toolbar">
+      <button id="editToggle" class="tool-button active">
+        Редагування зон: УВІМК.
+      </button>
+<button id="editTimerBtn" class="tool-button">
+  Налаштувати таймер
+</button>
+      <button id="resetZones" class="tool-button">
+        Скинути позиції
+      </button>
+
+      <button id="exportZones" class="tool-button">
+        Показати координати
+      </button>
+    </div>
+
+    <h2>Вибір зони</h2>
+
+    <select id="zoneSelect" style="width:100%">
+      <option value="mode">Перемикач режимів</option>
+      <option value="analyze">АНАЛІЗ</option>
+      <option value="charge">ЗАРЯД</option>
+      <option value="energy">ВИБІР ЕНЕРГІЇ</option>
+      <option value="shock">РОЗРЯД</option>
+      <option value="softkey1">Програмна кнопка 1</option>
+      <option value="softkey2">Програмна кнопка 2</option>
+      <option value="softkey3">Програмна кнопка 3</option>
+      <option value="softkey4">Програмна кнопка 4</option>
+      <option value="softkey5">Програмна кнопка 5</option>
+      <option value="dial">Поворотна ручка</option>
+      <option value="power">Потужність</option>
+      <option value="ma">mA</option>
+      <option value="nibp">НІАД</option>
+      <option value="print">Друк</option>
+      <option value="alarms">Тривоги</option>
+      <option value="lead">Відведення</option>
+      <option value="mute">МШТБ</option>
+    </select>
+
+    <div class="info" id="help">
+      <strong>Режим налаштування</strong>
+      <p>Вибери зону зі списку або клацни її на фото.</p>
+      <p>Перетягни зону мишкою. Жовтий квадратик змінює її розмір.</p>
+      <p class="muted">
+        Координати зберігаються в цьому браузері.
+        Для закріплення координат для всіх користувачів
+        вони записані безпосередньо в HTML.
+      </p>
+    </div>
+
+    <div class="info">
+      <strong>Вибрана зона:</strong>
+      <div id="selectedName">Перемикач режимів</div>
+      <div class="coordinates" id="coordText"></div>
+    </div>
+
+    <div class="info muted" id="testResult" aria-live="polite">
+      Координати налаштовано. Логіку кнопок додамо наступним етапом.
+    </div>
+  </section>
+
+</main>
+
+<script type="module">
+import { getState, subscribe } from "./js/device-state.js";
+import { selectMode, MODES } from "./js/mode-control.js";
+const wrap = document.getElementById("deviceWrap");
+const zones = [...document.querySelectorAll(".zone")];
+const editToggle = document.getElementById("editToggle");
+const zoneSelect = document.getElementById("zoneSelect");
+const selectedName = document.getElementById("selectedName");
+const coordText = document.getElementById("coordText");
+const help = document.getElementById("help");
+const testResult = document.getElementById("testResult");
+  const runtimeDisplay = document.getElementById("runtimeDisplay");
+
+let runtimeStartedAt = null;
+let runtimeInterval = null;
+
+function updateRuntimeTimer() {
+  if (runtimeStartedAt === null) return;
+
+  const seconds = Math.floor(
+    (Date.now() - runtimeStartedAt) / 1000
+  );
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  runtimeDisplay.textContent =
+    String(minutes).padStart(2, "0") + ":" +
+    String(remainingSeconds).padStart(2, "0");
+}
+
+function syncRuntimeTimer(state) {
+  if (state.power) {
+    if (runtimeStartedAt === null) {
+      runtimeStartedAt = Date.now();
+      runtimeDisplay.textContent = "00:00";
+      runtimeDisplay.classList.add("visible");
+      runtimeInterval = setInterval(updateRuntimeTimer, 1000);
+    }
+  } else {
+    if (runtimeInterval !== null) {
+      clearInterval(runtimeInterval);
+      runtimeInterval = null;
+    }
+
+    runtimeStartedAt = null;
+    runtimeDisplay.textContent = "00:00";
+    runtimeDisplay.classList.remove("visible");
+  }
+}
+
+// Нова версія сховища: старі координати v2 не перекриватимуть HTML.
+const STORAGE_KEY = "mediana-zone-positions-v3";
+
+const names = {
+  mode: "Перемикач режимів",
+  analyze: "АНАЛІЗ",
+  charge: "ЗАРЯД",
+  energy: "ВИБІР ЕНЕРГІЇ",
+  shock: "РОЗРЯД",
+  softkey1: "Програмна кнопка 1",
+  softkey2: "Програмна кнопка 2",
+  softkey3: "Програмна кнопка 3",
+  softkey4: "Програмна кнопка 4",
+  softkey5: "Програмна кнопка 5",
+  dial: "Поворотна ручка",
+  power: "Потужність",
+  ma: "mA",
+  nibp: "НІАД",
+  print: "Друк",
+  alarms: "Тривоги",
+  lead: "Відведення",
+  mute: "МШТБ"
+};
+
+// Початкові координати з HTML.
+const initial = {};
+
+zones.forEach(zone => {
+  const id = zone.dataset.id;
+  if (id) initial[id] = readPosition(zone);
+});
+
+let editing = true;
+let selected = "mode";
+let drag = null;
+
+function getZone(id) {
+  return zones.find(zone => zone.dataset.id === id);
+}
+
+function readPosition(zone) {
+  return {
+    x: parseFloat(zone.style.getPropertyValue("--x")),
+    y: parseFloat(zone.style.getPropertyValue("--y")),
+    w: parseFloat(zone.style.getPropertyValue("--w")),
+    h: parseFloat(zone.style.getPropertyValue("--h"))
+  };
+}
+
+function setPosition(zone, p) {
+  zone.style.setProperty("--x", p.x + "%");
+  zone.style.setProperty("--y", p.y + "%");
+  zone.style.setProperty("--w", p.w + "%");
+  zone.style.setProperty("--h", p.h + "%");
+}
+
+function savePositions() {
+  const positions = {};
+
+  zones.forEach(zone => {
+    const id = zone.dataset.id;
+    if (id) positions[id] = readPosition(zone);
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(positions));
+  } catch (error) {
+    console.error("Не вдалося зберегти координати:", error);
+  }
+}
+
+function loadPositions() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(STORAGE_KEY) || "null"
+    );
+
+    if (!saved) return;
+
+    zones.forEach(zone => {
+      const id = zone.dataset.id;
+      const p = id ? saved[id] : null;
+
+      if (p) setPosition(zone, p);
+    });
+  } catch (error) {
+    console.error("Не вдалося завантажити координати:", error);
+  }
+}
+
+function selectZone(id) {
+  const zone = getZone(id);
+  if (!zone) return;
+
+  selected = id;
+
+  zones.forEach(item => {
+    item.classList.toggle("selected", item.dataset.id === id);
+  });
+
+  zoneSelect.value = id;
+  selectedName.textContent = names[id] || id;
+
+  updateCoordinates();
+}
+
+function updateCoordinates() {
+  const zone = getZone(selected);
+  if (!zone) return;
+
+  const p = readPosition(zone);
+
+  coordText.textContent =
+    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
+    `W: ${p.w.toFixed(4)}% · H: ${p.h.toFixed(4)}%`;
+}
+  function updateTimerCoordinates() {
+  const wrapRect = wrap.getBoundingClientRect();
+  const timerRect = runtimeDisplay.getBoundingClientRect();
+
+  const p = {
+    x: (timerRect.left - wrapRect.left) / wrapRect.width * 100,
+    y: (timerRect.top - wrapRect.top) / wrapRect.height * 100,
+    w: timerRect.width / wrapRect.width * 100,
+    h: timerRect.height / wrapRect.height * 100
+  };
+
+  selectedName.textContent = "Таймер";
+
+  coordText.textContent =
+    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
+    `W: ${p.w.toFixed(4)}% · H: ${p.h.toFixed(4)}%`;
+}
+
+function setEditing(value) {
+  editing = value;
+  wrap.classList.toggle("editing", editing);
+
+  editToggle.classList.toggle("active", editing);
+  editToggle.textContent =
+    "Редагування зон: " + (editing ? "УВІМК." : "ВИМК.");
+
+  zones.forEach(zone => {
+    zone.style.opacity = editing ? "1" : "0";
+    zone.style.pointerEvents = "auto";
+    zone.style.borderColor =
+      editing && zone.dataset.id === selected ? "#ffd34e" : "";
+  });
+
+  help.innerHTML = editing
+    ? "<strong>Режим налаштування</strong><p>Перетягни зону на потрібний елемент. Жовтий квадратик змінює розмір.</p><p class='muted'>Зміни зберігаються в цьому браузері.</p>"
+    : "<strong>Режим перевірки</strong><p>Зони приховані. Натискання перевіряє вибрану ділянку. Для редагування знову ввімкни режим налаштування.</p>";
+}
+
+zones.forEach(zone => {
+  zone.addEventListener("pointerdown", event => {
+    if (!editing) return;
+
+    event.preventDefault();
+    selectZone(zone.dataset.id);
+
+    const isResize = event.target.classList.contains("resize");
+    const rect = wrap.getBoundingClientRect();
+
+    drag = {
+      zone,
+      isResize,
+      startX: event.clientX,
+      startY: event.clientY,
+      rect,
+      original: readPosition(zone),
+      moved: false
+    };
+
+    zone.setPointerCapture(event.pointerId);
+  });
+
+  zone.addEventListener("pointermove", event => {
+    if (!editing || !drag || drag.zone !== zone) return;
+
+    const dx =
+      (event.clientX - drag.startX) / drag.rect.width * 100;
+    const dy =
+      (event.clientY - drag.startY) / drag.rect.height * 100;
+
+    if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+      drag.moved = true;
+    }
+
+    const p = { ...drag.original };
+
+    if (drag.isResize) {
+      p.w = Math.max(1, Math.min(100 - p.x, p.w + dx));
+      p.h = Math.max(1, Math.min(100 - p.y, p.h + dy));
+    } else {
+      p.x = Math.max(0, Math.min(100 - p.w, p.x + dx));
+      p.y = Math.max(0, Math.min(100 - p.h, p.y + dy));
+    }
+
+    setPosition(zone, p);
+    updateCoordinates();
+  });
+
+  zone.addEventListener("pointerup", () => {
+    if (drag && drag.zone === zone) {
+      if (drag.moved) savePositions();
+      drag = null;
+    }
+  });
+
+  zone.addEventListener("pointercancel", () => {
+    drag = null;
+  });
+
+  zone.addEventListener("click", event => {
+    if (editing) {
+      event.preventDefault();
+      return;
+    }
+
+    testResult.textContent =
+      "Натиснута зона: " +
+      (names[zone.dataset.id] || zone.dataset.id) +
+      ". Логіку цієї дії підключимо окремим етапом.";
+  });
+});
+
+zoneSelect.addEventListener("change", () => {
+  selectZone(zoneSelect.value);
+});
+
+editToggle.addEventListener("click", () => {
+  setEditing(!editing);
+});
+
+document.getElementById("resetZones").addEventListener("click", () => {
+  zones.forEach(zone => {
+    const id = zone.dataset.id;
+    if (initial[id]) setPosition(zone, initial[id]);
+  });
+
+  savePositions();
+  selectZone(selected);
+
+  testResult.textContent =
+    "Позиції повернуто до координат, записаних у коді.";
+});
+
+document.getElementById("exportZones").addEventListener("click", () => {
+  const positions = {};
+
+  zones.forEach(zone => {
+    const id = zone.dataset.id;
+    if (id) positions[id] = readPosition(zone);
+  });
+
+  testResult.textContent = JSON.stringify(positions, null, 2);
+});
+
+loadPositions();
+selectZone(selected);
+setEditing(true);
+  const deviceImage = document.getElementById("deviceImage");
+  const editTimerBtn = document.getElementById("editTimerBtn");
+
+let timerEditing = false;
+
+editTimerBtn.addEventListener("click", () => {
+  timerEditing = !timerEditing;
+
+  runtimeDisplay.classList.toggle("editing", timerEditing);
+
+  editTimerBtn.textContent = timerEditing
+    ? "Завершити налаштування таймера"
+    : "Налаштувати таймер";
+
+  if (timerEditing) {
+    updateTimerCoordinates();
+  } else {
+    updateCoordinates();
+  }
+});
+let timerDragging = false;
+let timerDragOffsetX = 0;
+let timerDragOffsetY = 0;
+
+runtimeDisplay.addEventListener("pointerdown", (event) => {
+  if (!timerEditing) return;
+
+  timerDragging = true;
+
+  const rect = runtimeDisplay.getBoundingClientRect();
+
+  timerDragOffsetX = event.clientX - rect.left;
+  timerDragOffsetY = event.clientY - rect.top;
+
+  runtimeDisplay.setPointerCapture(event.pointerId);
+  event.preventDefault();
+});
+
+runtimeDisplay.addEventListener("pointermove", (event) => {
+  if (!timerDragging) return;
+
+  const rect = wrap.getBoundingClientRect();
+
+  const x = event.clientX - rect.left - timerDragOffsetX;
+  const y = event.clientY - rect.top - timerDragOffsetY;
+
+  runtimeDisplay.style.left = (x / rect.width * 100) + "%";
+  runtimeDisplay.style.top = (y / rect.height * 100) + "%";
+
+    updateTimerCoordinates();
+});
+
+runtimeDisplay.addEventListener("pointerup", () => {
+  timerDragging = false;
+});
+
+runtimeDisplay.addEventListener("pointercancel", () => {
+  timerDragging = false;
+});
+function renderDeviceState(state) {
+  if (state.power && state.mode === MODES.MANUAL) {
+    deviceImage.src = "mediana-manual.png";
+  } else {
+    deviceImage.src = "mediana-base.png";
+  }
+}
+
+subscribe(state => {
+  renderDeviceState(state);
+  syncRuntimeTimer(state);
+});
+
+renderDeviceState(getState());
+syncRuntimeTimer(getState());
+
+const modeZone = document.querySelector('[data-id="mode"]');
+
+modeZone.addEventListener("click", () => {
+  if (editing) return;
+
+  const state = getState();
+
+  if (state.power && state.mode === MODES.MANUAL) {
+    selectMode(MODES.OFF);
+    testResult.textContent = "Пристрій вимкнено.";
+  } else {
+    selectMode(MODES.MANUAL);
+    testResult.textContent = "MEDIANA увімкнено. Режим РУЧНОЙ.";
+  }
+});
+</script>
+
+</body>
+</html>
