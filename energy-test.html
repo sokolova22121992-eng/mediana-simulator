@@ -1,132 +1,149 @@
 
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MEDIANA D500 — Energy Control Test</title>
+/**
+ * MEDIANA D500
+ * ENERGY CONTROL
+ *
+ * Регулятор візуально нерухомий.
+ * Рух мишки по колу змінює енергію.
+ * Коротке натискання підтверджує вибір.
+ */
 
-<style>
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  padding: 24px;
-  background: #111820;
-  color: white;
-  font-family: Arial, sans-serif;
-}
-
-h1 {
-  font-size: 22px;
-}
-
-.device {
-  position: relative;
-  width: min(100%, 1000px);
-  margin: 25px auto;
-}
-
-.device img {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-#dial {
-  position: absolute;
-  left: 72.919688324%;
-  top: 48.1705679102%;
-  width: 10.3278658287%;
-  height: 12.8913%;
-  border: 2px dashed #00aeff;
-  border-radius: 50%;
-  background: transparent;
-  cursor: grab;
-  touch-action: none;
-}
-
-#dial:active {
-  cursor: grabbing;
-}
-
-#energyValue {
-  position: absolute;
-  left: 39.5%;
-  top: 50.5%;
-  width: 13%;
-  height: 7%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #050a12;
-  color: #ffd34e;
-  font-size: clamp(22px, 3.5vw, 38px);
-  font-weight: bold;
-  white-space: nowrap;
-  z-index: 5;
-}
-
-#status {
-  text-align: center;
-  color: #8bd5ff;
-  margin: 20px;
-}
-</style>
-</head>
-
-<body>
-
-<h1>MEDIANA D500 — тест регулятора енергії</h1>
-
-<div class="device">
-
-  <img src="mediana-energy.png" alt="MEDIANA D500">
-
-  <div id="energyValue">125 J</div>
-
-  <button id="dial" aria-label="Регулятор енергії"></button>
-
-</div>
-
-<div id="status">
-  Перетягуй регулятор мишкою.
-</div>
-
-<script type="module">
-import { createEnergyControl } from "./js/energy-control.js";
-
-const dial = document.getElementById("dial");
-const energyValue = document.getElementById("energyValue");
-const status = document.getElementById("status");
-
-// Тимчасові тестові значення.
-// Це не підтверджена шкала MEDIANA D500.
-const testSteps = [100, 125, 150, 175, 200];
-
-const controller = createEnergyControl({
-  knob: dial,
-  steps: testSteps,
-  initialIndex: 1,
-  stepAngle: 25,
-
-  onChange: (energy) => {
-    energyValue.textContent = energy + " J";
-    status.textContent = "Вибрана енергія: " + energy + " J";
-  },
-
-  onConfirm: (energy) => {
-    status.textContent =
-      "Підтверджено: " + energy + " J";
+export function createEnergyControl({
+  knob,
+  steps,
+  initialIndex = 0,
+  stepAngle = 25,
+  onChange = () => {},
+  onConfirm = () => {}
+}) {
+  if (!knob) {
+    throw new Error("Регулятор MEDIANA не знайдено");
   }
-});
 
-dial.addEventListener("dblclick", () => {
-  controller.confirm();
-});
-</script>
+  if (!Array.isArray(steps) || steps.length === 0) {
+    throw new Error("Не задані значення енергії");
+  }
 
-</body>
-</html>
+  let selectedIndex = Math.max(
+    0,
+    Math.min(initialIndex, steps.length - 1)
+  );
+
+  let dragging = false;
+  let pointerMoved = false;
+  let accumulatedAngle = 0;
+  let lastPointerAngle = 0;
+
+  function getCurrentValue() {
+    return steps[selectedIndex];
+  }
+
+  function getPointerAngle(event) {
+    const rect = knob.getBoundingClientRect();
+
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    return Math.atan2(
+      event.clientY - centerY,
+      event.clientX - centerX
+    ) * 180 / Math.PI;
+  }
+
+  function update() {
+    onChange(getCurrentValue(), selectedIndex);
+  }
+
+  function changeIndex(direction) {
+    const nextIndex = selectedIndex + direction;
+
+    if (nextIndex < 0 || nextIndex >= steps.length) {
+      return;
+    }
+
+    selectedIndex = nextIndex;
+    update();
+  }
+
+  function pointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) {
+      return;
+    }
+
+    dragging = true;
+    pointerMoved = false;
+    accumulatedAngle = 0;
+    lastPointerAngle = getPointerAngle(event);
+
+    knob.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function pointerMove(event) {
+    if (!dragging) return;
+
+    const currentAngle = getPointerAngle(event);
+
+    let difference = currentAngle - lastPointerAngle;
+
+    if (difference > 180) difference -= 360;
+    if (difference < -180) difference += 360;
+
+    if (Math.abs(difference) > 0.5) {
+      pointerMoved = true;
+    }
+
+    accumulatedAngle += difference;
+    lastPointerAngle = currentAngle;
+
+    while (accumulatedAngle >= stepAngle) {
+      changeIndex(1);
+      accumulatedAngle -= stepAngle;
+    }
+
+    while (accumulatedAngle <= -stepAngle) {
+      changeIndex(-1);
+      accumulatedAngle += stepAngle;
+    }
+  }
+
+  function pointerUp() {
+    if (!dragging) return;
+
+    dragging = false;
+
+    if (!pointerMoved) {
+      onConfirm(getCurrentValue(), selectedIndex);
+    }
+
+    accumulatedAngle = 0;
+  }
+
+  knob.addEventListener("pointerdown", pointerDown);
+  knob.addEventListener("pointermove", pointerMove);
+  knob.addEventListener("pointerup", pointerUp);
+  knob.addEventListener("pointercancel", pointerUp);
+
+  return {
+    getCurrentValue,
+
+    confirm() {
+      onConfirm(getCurrentValue(), selectedIndex);
+    },
+
+    setValue(index) {
+      if (!Number.isInteger(index)) return;
+      if (index < 0 || index >= steps.length) return;
+
+      selectedIndex = index;
+      update();
+    },
+
+    destroy() {
+      knob.removeEventListener("pointerdown", pointerDown);
+      knob.removeEventListener("pointermove", pointerMove);
+      knob.removeEventListener("pointerup", pointerUp);
+      knob.removeEventListener("pointercancel", pointerUp);
+    }
+  };
+}
