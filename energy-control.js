@@ -1,16 +1,17 @@
-
 /**
  * MEDIANA D500
  * ENERGY CONTROL MODULE
  *
- * Шкала: 1–200 J
  * Початкове значення: 125 J
+ * Мінімум: 1 J
+ * Максимум: 200 J
  *
- * Обертання за годинниковою стрілкою — збільшення.
- * Обертання проти годинникової стрілки — зменшення.
+ * За годинниковою стрілкою — збільшення.
+ * Проти годинникової стрілки — зменшення.
  * Коротке натискання — підтвердження.
  *
- * Зображення регулятора залишається нерухомим.
+ * Після підтвердження екран енергії залишається відкритим.
+ * Закриття відбувається окремою командою close().
  */
 
 export const ENERGY_STEPS = [
@@ -37,23 +38,19 @@ export function createEnergyControl({
     throw new Error("MEDIANA: зону dial не знайдено");
   }
 
-  if (!deviceImage) {
-    throw new Error("MEDIANA: зображення пристрою не знайдено");
-  }
-
-  if (!deviceWrap) {
-    throw new Error("MEDIANA: контейнер пристрою не знайдено");
+  if (!deviceImage || !deviceWrap) {
+    throw new Error("MEDIANA: не знайдено елементи пристрою");
   }
 
   if (stepAngle <= 0 || !Number.isFinite(stepAngle)) {
     throw new Error("MEDIANA: неправильний кут кроку");
   }
 
-  // Початкове значення 125 J.
   let selectedIndex = ENERGY_STEPS.indexOf(INITIAL_ENERGY);
 
-  // Стан регулятора.
   let enabled = false;
+  let confirmed = false;
+
   let pointerActive = false;
   let pointerMoved = false;
   let activePointerId = null;
@@ -64,27 +61,25 @@ export function createEnergyControl({
   let lastAngle = 0;
   let accumulatedAngle = 0;
 
-  // Збереження початкового зображення.
-  const originalImage = deviceImage.getAttribute("src");
-
-  // Створення динамічного відображення енергії.
   const energyDisplay = document.createElement("div");
 
   energyDisplay.id = "energyValue";
   energyDisplay.textContent = INITIAL_ENERGY + " J";
 
-  energyDisplay.style.position = "absolute";
-  energyDisplay.style.display = "none";
-  energyDisplay.style.alignItems = "center";
-  energyDisplay.style.justifyContent = "center";
-  energyDisplay.style.background = "#050a12";
-  energyDisplay.style.color = "#ffd34e";
-  energyDisplay.style.fontFamily = "Arial, sans-serif";
-  energyDisplay.style.fontWeight = "bold";
-  energyDisplay.style.whiteSpace = "nowrap";
-  energyDisplay.style.zIndex = "5";
-  energyDisplay.style.pointerEvents = "none";
-  energyDisplay.style.userSelect = "none";
+  Object.assign(energyDisplay.style, {
+    position: "absolute",
+    display: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#050a12",
+    color: "#ffd34e",
+    fontFamily: "Arial, sans-serif",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+    zIndex: "5",
+    pointerEvents: "none",
+    userSelect: "none"
+  });
 
   deviceWrap.appendChild(energyDisplay);
 
@@ -119,32 +114,30 @@ export function createEnergyControl({
   function changeIndex(direction) {
     const nextIndex = selectedIndex + direction;
 
-    // Без циклічного переходу через межі шкали.
-    if (
-      nextIndex < 0 ||
-      nextIndex >= ENERGY_STEPS.length
-    ) {
+    if (nextIndex < 0 || nextIndex >= ENERGY_STEPS.length) {
       return;
     }
 
     selectedIndex = nextIndex;
+    confirmed = false;
+
     updateDisplay();
   }
 
-  // Відкриття вибору енергії.
+  // Відкриття екрана вибору енергії
   function open() {
     if (enabled) return;
 
     enabled = true;
+    confirmed = false;
 
     deviceImage.src = energyImage;
-
     energyDisplay.style.display = "flex";
 
     updateDisplay();
   }
 
-  // Закриття без підтвердження.
+  // Закриття екрана. Викликатиметься кнопкою ЗАРЯД.
   function close() {
     enabled = false;
 
@@ -153,17 +146,12 @@ export function createEnergyControl({
     accumulatedAngle = 0;
 
     energyDisplay.style.display = "none";
-
-    deviceImage.src = originalImage;
   }
 
   function pointerDown(event) {
-    if (!enabled || pointerActive) return;
+    if (!enabled || pointerActive || confirmed) return;
 
-    if (
-      event.button !== undefined &&
-      event.button !== 0
-    ) {
+    if (event.button !== undefined && event.button !== 0) {
       return;
     }
 
@@ -210,16 +198,13 @@ export function createEnergyControl({
     if (difference < -180) difference += 360;
 
     lastAngle = currentAngle;
-
     accumulatedAngle += difference;
 
-    // Обертання за годинниковою стрілкою.
     while (accumulatedAngle >= stepAngle) {
       changeIndex(1);
       accumulatedAngle -= stepAngle;
     }
 
-    // Обертання проти годинникової стрілки.
     while (accumulatedAngle <= -stepAngle) {
       changeIndex(-1);
       accumulatedAngle += stepAngle;
@@ -236,12 +221,11 @@ export function createEnergyControl({
 
     pointerActive = false;
     activePointerId = null;
+    accumulatedAngle = 0;
 
     if (enabled && !pointerMoved) {
       confirm();
     }
-
-    accumulatedAngle = 0;
   }
 
   function pointerCancel(event) {
@@ -252,66 +236,46 @@ export function createEnergyControl({
     accumulatedAngle = 0;
   }
 
-  // Підтвердження вибору.
+  // Підтвердження НЕ закриває екран енергії
   function confirm() {
-    if (!enabled || pointerActive) return;
+    if (!enabled || pointerActive || confirmed) return;
+
+    confirmed = true;
 
     const value = getCurrentValue();
     const index = selectedIndex;
 
     onConfirm(value, index);
 
-    close();
-
     return value;
   }
 
-  // Встановлення значення програмно.
   function setValue(value) {
     const index = ENERGY_STEPS.indexOf(value);
 
     if (index === -1) return;
 
     selectedIndex = index;
+    confirmed = false;
+
     updateDisplay();
   }
 
-  // Налаштування розташування динамічного числа.
-  function setDisplayPosition({
-    x,
-    y,
-    width,
-    height
-  }) {
+  // Координати дисплея налаштуємо окремо
+  function setDisplayPosition({ x, y, width, height }) {
     energyDisplay.style.left = x + "%";
     energyDisplay.style.top = y + "%";
     energyDisplay.style.width = width + "%";
     energyDisplay.style.height = height + "%";
   }
 
-  // Видалення обробників.
   function destroy() {
     close();
 
-    knob.removeEventListener(
-      "pointerdown",
-      pointerDown
-    );
-
-    knob.removeEventListener(
-      "pointermove",
-      pointerMove
-    );
-
-    knob.removeEventListener(
-      "pointerup",
-      pointerUp
-    );
-
-    knob.removeEventListener(
-      "pointercancel",
-      pointerCancel
-    );
+    knob.removeEventListener("pointerdown", pointerDown);
+    knob.removeEventListener("pointermove", pointerMove);
+    knob.removeEventListener("pointerup", pointerUp);
+    knob.removeEventListener("pointercancel", pointerCancel);
 
     energyDisplay.remove();
   }
