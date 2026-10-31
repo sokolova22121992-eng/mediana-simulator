@@ -698,6 +698,21 @@ selectZone(selected);
 setEditing(true);
   const deviceImage = document.getElementById("deviceImage");
   const editTimerBtn = document.getElementById("editTimerBtn");
+  const energyControl = createEnergyControl({
+  knob: document.querySelector('[data-id="dial"]'),
+  deviceImage: deviceImage,
+  deviceWrap: wrap,
+
+  energyImage: "mediana-energy.png",
+
+  onChange(value) {
+    console.log("Вибрана енергія:", value, "J");
+  },
+
+  onConfirm(value) {
+    console.log("Підтверджена енергія:", value, "J");
+  }
+});
 
 let timerEditing = false;
 
