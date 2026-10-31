@@ -385,6 +385,7 @@ button, select { font: inherit; }
 <script type="module">
 import { getState, subscribe } from "./js/device-state.js";
 import { selectMode, MODES } from "./js/mode-control.js";
+  import { createEnergyControl } from "./js/energy-control.js";
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
 const editToggle = document.getElementById("editToggle");
