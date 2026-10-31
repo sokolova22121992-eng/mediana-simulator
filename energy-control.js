@@ -1,9 +1,9 @@
 
 /**
  * MEDIANA D500
- * ENERGY CONTROL
+ * ENERGY CONTROL MODULE
  *
- * Регулятор візуально нерухомий.
+ * Регулятор на фото нерухомий.
  * Рух мишки по колу змінює енергію.
  * Коротке натискання підтверджує вибір.
  */
@@ -17,11 +17,15 @@ export function createEnergyControl({
   onConfirm = () => {}
 }) {
   if (!knob) {
-    throw new Error("Регулятор MEDIANA не знайдено");
+    throw new Error("MEDIANA: зону регулятора dial не знайдено");
   }
 
   if (!Array.isArray(steps) || steps.length === 0) {
-    throw new Error("Не задані значення енергії");
+    throw new Error("MEDIANA: не задана шкала енергії");
+  }
+
+  if (!Number.isFinite(stepAngle) || stepAngle <= 0) {
+    throw new Error("MEDIANA: неправильний кут кроку");
   }
 
   let selectedIndex = Math.max(
@@ -33,6 +37,8 @@ export function createEnergyControl({
   let pointerMoved = false;
   let accumulatedAngle = 0;
   let lastPointerAngle = 0;
+  let activePointerId = null;
+  let confirmed = false;
 
   function getCurrentValue() {
     return steps[selectedIndex];
@@ -51,6 +57,7 @@ export function createEnergyControl({
   }
 
   function update() {
+    confirmed = false;
     onChange(getCurrentValue(), selectedIndex);
   }
 
@@ -70,17 +77,23 @@ export function createEnergyControl({
       return;
     }
 
+    if (dragging) return;
+
     dragging = true;
     pointerMoved = false;
     accumulatedAngle = 0;
+    activePointerId = event.pointerId;
     lastPointerAngle = getPointerAngle(event);
 
     knob.setPointerCapture(event.pointerId);
+
     event.preventDefault();
   }
 
   function pointerMove(event) {
-    if (!dragging) return;
+    if (!dragging || event.pointerId !== activePointerId) {
+      return;
+    }
 
     const currentAngle = getPointerAngle(event);
 
@@ -107,27 +120,42 @@ export function createEnergyControl({
     }
   }
 
-  function pointerUp() {
-    if (!dragging) return;
+  function pointerUp(event) {
+    if (!dragging || event.pointerId !== activePointerId) {
+      return;
+    }
 
     dragging = false;
+    activePointerId = null;
 
-    if (!pointerMoved) {
+    if (!pointerMoved && !confirmed) {
+      confirmed = true;
       onConfirm(getCurrentValue(), selectedIndex);
     }
 
     accumulatedAngle = 0;
   }
 
+  function pointerCancel(event) {
+    if (event.pointerId !== activePointerId) return;
+
+    dragging = false;
+    activePointerId = null;
+    accumulatedAngle = 0;
+  }
+
   knob.addEventListener("pointerdown", pointerDown);
   knob.addEventListener("pointermove", pointerMove);
   knob.addEventListener("pointerup", pointerUp);
-  knob.addEventListener("pointercancel", pointerUp);
+  knob.addEventListener("pointercancel", pointerCancel);
 
   return {
     getCurrentValue,
 
     confirm() {
+      if (dragging || confirmed) return;
+
+      confirmed = true;
       onConfirm(getCurrentValue(), selectedIndex);
     },
 
@@ -143,7 +171,10 @@ export function createEnergyControl({
       knob.removeEventListener("pointerdown", pointerDown);
       knob.removeEventListener("pointermove", pointerMove);
       knob.removeEventListener("pointerup", pointerUp);
-      knob.removeEventListener("pointercancel", pointerUp);
+      knob.removeEventListener("pointercancel", pointerCancel);
+
+      dragging = false;
+      activePointerId = null;
     }
   };
 }
