@@ -1,42 +1,102 @@
-
 /**
  * MEDIANA D500
- * ENERGY CONTROL
+ * ENERGY CONTROL MODULE
  *
- * Окремий модуль керування регулятором енергії.
+ * Початкове значення: 125 J
+ * Мінімум: 1 J
+ * Максимум: 200 J
+ *
+ * За годинниковою стрілкою — збільшення.
+ * Проти годинникової стрілки — зменшення.
+ * Коротке натискання — підтвердження.
+ *
+ * Після підтвердження екран енергії залишається відкритим.
+ * Закриття відбувається окремою командою close().
  */
+
+export const ENERGY_STEPS = [
+  1, 2, 4, 6, 8, 10, 12, 14, 16,
+  20, 25, 50, 75, 100, 125, 150, 175, 200
+];
+
+export const INITIAL_ENERGY = 125;
 
 export function createEnergyControl({
   knob,
-  steps,
-  initialIndex = 0,
+  deviceImage,
+  deviceWrap,
+
+  energyImage = "mediana-energy.png",
+
   stepAngle = 25,
+  movementThreshold = 5,
+
   onChange = () => {},
   onConfirm = () => {}
 }) {
   if (!knob) {
-    throw new Error("MEDIANA: регулятор не знайдено");
+    throw new Error("MEDIANA: зону dial не знайдено");
   }
 
-  if (!Array.isArray(steps) || steps.length === 0) {
-    throw new Error("MEDIANA: не задані значення енергії");
+  if (!deviceImage || !deviceWrap) {
+    throw new Error("MEDIANA: не знайдено елементи пристрою");
   }
 
-  let selectedIndex = Math.max(
-    0,
-    Math.min(initialIndex, steps.length - 1)
-  );
+  if (stepAngle <= 0 || !Number.isFinite(stepAngle)) {
+    throw new Error("MEDIANA: неправильний кут кроку");
+  }
 
-  let rotation = 0;
+  let selectedIndex = ENERGY_STEPS.indexOf(INITIAL_ENERGY);
+
+  let enabled = false;
+  let confirmed = false;
+
+  let pointerActive = false;
+  let pointerMoved = false;
+  let activePointerId = null;
+
+  let startX = 0;
+  let startY = 0;
+
+  let lastAngle = 0;
   let accumulatedAngle = 0;
 
-  let dragging = false;
-  let lastPointerAngle = 0;
+  const energyDisplay = document.createElement("div");
 
-  const originalTransform = knob.style.transform;
+  energyDisplay.id = "energyValue";
+  energyDisplay.textContent = INITIAL_ENERGY + " J";
+
+  Object.assign(energyDisplay.style, {
+    position: "absolute",
+    display: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#050a12",
+    color: "#ffd34e",
+    fontFamily: "Arial, sans-serif",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+    zIndex: "5",
+    pointerEvents: "none",
+    userSelect: "none"
+  });
+
+  deviceWrap.appendChild(energyDisplay);
 
   function getCurrentValue() {
-    return steps[selectedIndex];
+    return ENERGY_STEPS[selectedIndex];
+  }
+
+  function getCurrentIndex() {
+    return selectedIndex;
+  }
+
+  function updateDisplay() {
+    const value = getCurrentValue();
+
+    energyDisplay.textContent = value + " J";
+
+    onChange(value, selectedIndex);
   }
 
   function getPointerAngle(event) {
@@ -51,32 +111,59 @@ export function createEnergyControl({
     ) * 180 / Math.PI;
   }
 
-  function update() {
-    knob.style.transform =
-      `rotate(${rotation}deg)`;
-
-    onChange(getCurrentValue(), selectedIndex);
-  }
-
   function changeIndex(direction) {
     const nextIndex = selectedIndex + direction;
 
-    if (nextIndex < 0 || nextIndex >= steps.length) {
+    if (nextIndex < 0 || nextIndex >= ENERGY_STEPS.length) {
       return;
     }
 
     selectedIndex = nextIndex;
-    update();
+    confirmed = false;
+
+    updateDisplay();
+  }
+
+  // Відкриття екрана вибору енергії
+  function open() {
+    if (enabled) return;
+
+    enabled = true;
+    confirmed = false;
+
+    deviceImage.src = energyImage;
+    energyDisplay.style.display = "flex";
+
+    updateDisplay();
+  }
+
+  // Закриття екрана. Викликатиметься кнопкою ЗАРЯД.
+  function close() {
+    enabled = false;
+
+    pointerActive = false;
+    activePointerId = null;
+    accumulatedAngle = 0;
+
+    energyDisplay.style.display = "none";
   }
 
   function pointerDown(event) {
+    if (!enabled || pointerActive || confirmed) return;
+
     if (event.button !== undefined && event.button !== 0) {
       return;
     }
 
-    dragging = true;
+    pointerActive = true;
+    pointerMoved = false;
+    activePointerId = event.pointerId;
+
+    startX = event.clientX;
+    startY = event.clientY;
+
+    lastAngle = getPointerAngle(event);
     accumulatedAngle = 0;
-    lastPointerAngle = getPointerAngle(event);
 
     knob.setPointerCapture(event.pointerId);
 
@@ -84,19 +171,34 @@ export function createEnergyControl({
   }
 
   function pointerMove(event) {
-    if (!dragging) return;
+    if (
+      !enabled ||
+      !pointerActive ||
+      event.pointerId !== activePointerId
+    ) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      event.clientX - startX,
+      event.clientY - startY
+    );
+
+    if (distance >= movementThreshold) {
+      pointerMoved = true;
+    }
+
+    if (!pointerMoved) return;
 
     const currentAngle = getPointerAngle(event);
 
-    let difference = currentAngle - lastPointerAngle;
+    let difference = currentAngle - lastAngle;
 
     if (difference > 180) difference -= 360;
     if (difference < -180) difference += 360;
 
+    lastAngle = currentAngle;
     accumulatedAngle += difference;
-    rotation += difference;
-
-    lastPointerAngle = currentAngle;
 
     while (accumulatedAngle >= stepAngle) {
       changeIndex(1);
@@ -107,45 +209,91 @@ export function createEnergyControl({
       changeIndex(-1);
       accumulatedAngle += stepAngle;
     }
-
-    knob.style.transform =
-      `rotate(${rotation}deg)`;
   }
 
-  function pointerUp() {
-    dragging = false;
+  function pointerUp(event) {
+    if (
+      !pointerActive ||
+      event.pointerId !== activePointerId
+    ) {
+      return;
+    }
+
+    pointerActive = false;
+    activePointerId = null;
+    accumulatedAngle = 0;
+
+    if (enabled && !pointerMoved) {
+      confirm();
+    }
+  }
+
+  function pointerCancel(event) {
+    if (event.pointerId !== activePointerId) return;
+
+    pointerActive = false;
+    activePointerId = null;
     accumulatedAngle = 0;
   }
 
+  // Підтвердження НЕ закриває екран енергії
   function confirm() {
-    onConfirm(getCurrentValue(), selectedIndex);
+    if (!enabled || pointerActive || confirmed) return;
+
+    confirmed = true;
+
+    const value = getCurrentValue();
+    const index = selectedIndex;
+
+    onConfirm(value, index);
+
+    return value;
+  }
+
+  function setValue(value) {
+    const index = ENERGY_STEPS.indexOf(value);
+
+    if (index === -1) return;
+
+    selectedIndex = index;
+    confirmed = false;
+
+    updateDisplay();
+  }
+
+  // Координати дисплея налаштуємо окремо
+  function setDisplayPosition({ x, y, width, height }) {
+    energyDisplay.style.left = x + "%";
+    energyDisplay.style.top = y + "%";
+    energyDisplay.style.width = width + "%";
+    energyDisplay.style.height = height + "%";
+  }
+
+  function destroy() {
+    close();
+
+    knob.removeEventListener("pointerdown", pointerDown);
+    knob.removeEventListener("pointermove", pointerMove);
+    knob.removeEventListener("pointerup", pointerUp);
+    knob.removeEventListener("pointercancel", pointerCancel);
+
+    energyDisplay.remove();
   }
 
   knob.addEventListener("pointerdown", pointerDown);
   knob.addEventListener("pointermove", pointerMove);
   knob.addEventListener("pointerup", pointerUp);
-  knob.addEventListener("pointercancel", pointerUp);
+  knob.addEventListener("pointercancel", pointerCancel);
 
   return {
-    getCurrentValue,
-
+    open,
+    close,
     confirm,
-
-    setValue(index) {
-      if (!Number.isInteger(index)) return;
-      if (index < 0 || index >= steps.length) return;
-
-      selectedIndex = index;
-      update();
-    },
-
-    destroy() {
-      knob.removeEventListener("pointerdown", pointerDown);
-      knob.removeEventListener("pointermove", pointerMove);
-      knob.removeEventListener("pointerup", pointerUp);
-      knob.removeEventListener("pointercancel", pointerUp);
-
-      knob.style.transform = originalTransform;
-    }
+    getCurrentValue,
+    getCurrentIndex,
+    setValue,
+    setDisplayPosition,
+    destroy
   };
 }
+
