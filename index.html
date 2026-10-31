@@ -385,6 +385,7 @@ button, select { font: inherit; }
 <script type="module">
 import { getState, subscribe } from "./js/device-state.js";
 import { selectMode, MODES } from "./js/mode-control.js";
+  import { createEnergyControl } from "./js/energy-control.js";
 
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
@@ -697,6 +698,21 @@ loadPositions();
 selectZone(selected);
 setEditing(true);
   const deviceImage = document.getElementById("deviceImage");
+  const energyControl = createEnergyControl({
+  knob: document.querySelector('[data-id="dial"]'),
+  deviceImage: deviceImage,
+  deviceWrap: wrap,
+
+  energyImage: "mediana-energy.png",
+
+  onChange(value) {
+    console.log("Вибрана енергія:", value, "J");
+  },
+
+  onConfirm(value) {
+    console.log("Енергію підтверджено:", value, "J");
+  }
+});
   const editTimerBtn = document.getElementById("editTimerBtn");
 
 let timerEditing = false;
