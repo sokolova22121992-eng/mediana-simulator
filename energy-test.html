@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MEDIANA D500 — Energy Control Test</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: #111820;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  font-size: 22px;
+}
+
+.device {
+  position: relative;
+  width: min(100%, 1000px);
+  margin: 25px auto;
+}
+
+.device img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+#dial {
+  position: absolute;
+  left: 72.919688324%;
+  top: 48.1705679102%;
+  width: 10.3278658287%;
+  height: 12.8913%;
+  border: 2px dashed #00aeff;
+  border-radius: 50%;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+#dial:active {
+  cursor: grabbing;
+}
+
+#energyValue {
+  position: absolute;
+  left: 35%;
+  top: 48%;
+  color: #ffd34e;
+  font-size: clamp(22px, 4vw, 42px);
+  font-weight: bold;
+}
+
+#status {
+  text-align: center;
+  color: #8bd5ff;
+  margin: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>MEDIANA D500 — тест регулятора енергії</h1>
+
+<div class="device">
+
+  <img src="mediana-energy.png" alt="MEDIANA D500">
+
+  <div id="energyValue">125 J</div>
+
+  <button id="dial" aria-label="Регулятор енергії"></button>
+
+</div>
+
+<div id="status">
+  Перетягуй регулятор мишкою.
+</div>
+
+<script type="module">
+import { createEnergyControl } from "./js/energy-control.js";
+
+const dial = document.getElementById("dial");
+const energyValue = document.getElementById("energyValue");
+const status = document.getElementById("status");
+
+// Тимчасові тестові значення.
+// Це не підтверджена шкала MEDIANA D500.
+const testSteps = [100, 125, 150, 175, 200];
+
+const controller = createEnergyControl({
+  knob: dial,
+  steps: testSteps,
+  initialIndex: 1,
+  stepAngle: 25,
+
+  onChange: (energy) => {
+    energyValue.textContent = energy + " J";
+    status.textContent = "Вибрана енергія: " + energy + " J";
+  },
+
+  onConfirm: (energy) => {
+    status.textContent =
+      "Підтверджено: " + energy + " J";
+  }
+});
+
+dial.addEventListener("dblclick", () => {
+  controller.confirm();
+});
+</script>
+
+</body>
+</html>
