@@ -650,16 +650,33 @@ zones.forEach(zone => {
   });
 
   zone.addEventListener("click", event => {
-    if (editing) {
-      event.preventDefault();
+  if (editing) {
+    event.preventDefault();
+    return;
+  }
+
+  const zoneId = zone.dataset.id;
+
+  // Вибір енергії доступний тільки в ручному режимі
+  if (zoneId === "energy") {
+    const state = getState();
+
+    if (!state.power || state.mode !== MODES.MANUAL) {
+      testResult.textContent =
+        "Спочатку увімкніть ручний режим.";
       return;
     }
 
+    energyControl.open();
     testResult.textContent =
-      "Натиснута зона: " +
-      (names[zone.dataset.id] || zone.dataset.id) +
-      ". Логіку цієї дії підключимо окремим етапом.";
-  });
+      "Виберіть потрібну енергію за допомогою ручки.";
+    return;
+  }
+
+  testResult.textContent =
+    "Натиснута зона: " +
+    (names[zoneId] || zoneId) +
+    ". Логіку цієї дії підключимо окремим етапом.";
 });
 
 zoneSelect.addEventListener("change", () => {
