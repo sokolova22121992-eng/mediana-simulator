@@ -467,8 +467,8 @@ zones.forEach(zone => {
   if (id) initial[id] = readPosition(zone);
 });
 
-let editing = true;
-let selected = "mode";
+let editing = false;
+  let selected = "mode";
 let drag = null;
 
 function getZone(id) {
@@ -713,7 +713,7 @@ document.getElementById("exportZones").addEventListener("click", () => {
 
 loadPositions();
 selectZone(selected);
-setEditing(true);
+setEditing(false);
   const deviceImage = document.getElementById("deviceImage");
   const energyControl = createEnergyControl({
   knob: document.querySelector('[data-id="dial"]'),
