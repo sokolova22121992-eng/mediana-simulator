@@ -66,7 +66,7 @@ height: 3.0986%;
   font-family: Arial, sans-serif;
   font-size: clamp(8px, 1.05vw, 16px);
   font-weight: bold;
-  z-index: 2;
+  z-index: 6;
   pointer-events: none;
   cursor: default;
   user-select: none;
@@ -709,13 +709,32 @@ document.getElementById("exportZones").addEventListener("click", () => {
     if (id) positions[id] = readPosition(zone);
   });
 
+  // Додаємо координати екрана енергії
+  positions.energyScreen = energyControl.getPosition();
+
   testResult.textContent = JSON.stringify(positions, null, 2);
 });
 
 loadPositions();
 selectZone(selected);
 setEditing(false);
-  const deviceImage = document.getElementById("deviceImage");
+
+const deviceImage = document.getElementById("deviceImage");
+
+function showEnergyCoordinates(p) {
+  selectedName.textContent = "Екран енергії";
+
+  coordText.textContent =
+    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
+    `W: ${p.width.toFixed(4)}% · H: ${p.height.toFixed(4)}%`;
+}
+
+const energyControl = createEnergyControl({
+
+  coordText.textContent =
+    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
+    `W: ${p.width.toFixed(4)}% · H: ${p.height.toFixed(4)}%`;
+}
   const energyControl = createEnergyControl({
   knob: document.querySelector('[data-id="dial"]'),
   deviceImage: deviceImage,
@@ -759,7 +778,11 @@ energyPositionBtn.addEventListener("click", () => {
   energyPositionEditing = !energyPositionEditing;
 
   energyControl.setEditing(energyPositionEditing);
-
+if (energyPositionEditing) {
+  showEnergyCoordinates(energyControl.getPosition());
+} else {
+  selectZone(selected);
+}
   energyPositionBtn.textContent = energyPositionEditing
     ? "Завершити налаштування екрана"
     : "Налаштувати екран енергії";
