@@ -78,26 +78,28 @@ export function createEnergyControl({
   energyLayer.appendChild(screenImage);
   deviceWrap.appendChild(energyLayer);
 
-  const energyDisplay = document.createElement("div");
-  energyDisplay.id = "energyValue";
-  energyDisplay.textContent = INITIAL_ENERGY + " J";
+  
+const energyDisplay = document.createElement("div");
+energyDisplay.id = "energyValue";
+energyDisplay.textContent = INITIAL_ENERGY + " J";
 
-  Object.assign(energyDisplay.style, {
-    position: "absolute",
-    display: "none",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#050a12",
-    color: "#ffd34e",
-    fontFamily: "Arial, sans-serif",
-    fontWeight: "bold",
-    whiteSpace: "nowrap",
-    zIndex: "5",
-    pointerEvents: "none",
-    userSelect: "none"
-  });
+Object.assign(energyDisplay.style, {
+  position: "absolute",
+  display: "none",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "transparent",
+  color: "#ffd34e",
+  fontFamily: "Arial, sans-serif",
+  fontWeight: "bold",
+  whiteSpace: "nowrap",
+  zIndex: "5",
+  pointerEvents: "none",
+  userSelect: "none"
+});
 
-  deviceWrap.appendChild(energyDisplay);
+deviceWrap.appendChild(energyDisplay);
+
 
   let editing = false;
   let dragging = false;
