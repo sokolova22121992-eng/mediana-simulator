@@ -729,17 +729,12 @@ function showEnergyCoordinates(p) {
     `W: ${p.width.toFixed(4)}% · H: ${p.height.toFixed(4)}%`;
 }
 
-const energyControl = createEnergyControl({
+let energyPositionEditing = false;
 
-  coordText.textContent =
-    `X: ${p.x.toFixed(4)}% · Y: ${p.y.toFixed(4)}% · ` +
-    `W: ${p.width.toFixed(4)}% · H: ${p.height.toFixed(4)}%`;
-}
-  const energyControl = createEnergyControl({
+const energyControl = createEnergyControl({
   knob: document.querySelector('[data-id="dial"]'),
   deviceImage: deviceImage,
   deviceWrap: wrap,
-
   energyImage: "mediana-energy.png",
 
   onChange(value) {
