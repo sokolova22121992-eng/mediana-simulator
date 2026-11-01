@@ -22,8 +22,9 @@ export function createEnergyControl({
   energyImage = "mediana-energy.png",
   stepAngle = 25,
   movementThreshold = 5,
-  onChange = () => {},
-  onConfirm = () => {}
+ onChange = () => {},
+onConfirm = () => {},
+onPositionChange = () => {}
 }) {
   if (!knob) throw new Error("MEDIANA: зону dial не знайдено");
   if (!deviceImage || !deviceWrap) {
@@ -200,6 +201,7 @@ deviceWrap.appendChild(energyDisplay);
     outline.style.top = position.y + "%";
     outline.style.width = position.width + "%";
     outline.style.height = position.height + "%";
+    onPositionChange({ ...position });
   }
 
   loadPosition();
