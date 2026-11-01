@@ -731,6 +731,40 @@ setEditing(false);
     console.log("Енергію підтверджено:", value, "J");
   }
 });
+  
+const energyPositionBtn = document.createElement("button");
+
+energyPositionBtn.id = "energyPositionBtn";
+energyPositionBtn.textContent = "Налаштувати екран енергії";
+
+Object.assign(energyPositionBtn.style, {
+  position: "fixed",
+  top: "90px",
+  right: "20px",
+  zIndex: "9999",
+  padding: "12px 16px",
+  background: "#1769aa",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+  fontSize: "14px"
+});
+
+document.body.appendChild(energyPositionBtn);
+
+let energyPositionEditing = false;
+
+energyPositionBtn.addEventListener("click", () => {
+  energyPositionEditing = !energyPositionEditing;
+
+  energyControl.setEditing(energyPositionEditing);
+
+  energyPositionBtn.textContent = energyPositionEditing
+    ? "Завершити налаштування екрана"
+    : "Налаштувати екран енергії";
+});
+
   const editTimerBtn = document.getElementById("editTimerBtn");
 
 let timerEditing = false;
