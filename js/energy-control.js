@@ -3,9 +3,8 @@
  * MEDIANA D500
  * ENERGY CONTROL MODULE
  *
- * Екран енергії — окремий шар поверх корпусу.
- * У режимі редагування можна переміщувати та змінювати його розмір.
- * Координати зберігаються у localStorage браузера.
+ * Екран енергії та напис джоулів мають незалежні координати.
+ * Обидва елементи можна переміщувати та змінювати їхній розмір.
  */
 
 export const ENERGY_STEPS = [
@@ -22,9 +21,10 @@ export function createEnergyControl({
   energyImage = "mediana-energy.png",
   stepAngle = 25,
   movementThreshold = 5,
- onChange = () => {},
-onConfirm = () => {},
-onPositionChange = () => {}
+  onChange = () => {},
+  onConfirm = () => {},
+  onPositionChange = () => {},
+  onValuePositionChange = () => {}
 }) {
   if (!knob) throw new Error("MEDIANA: зону dial не знайдено");
   if (!deviceImage || !deviceWrap) {
@@ -45,7 +45,8 @@ onPositionChange = () => {}
   let lastAngle = 0;
   let accumulatedAngle = 0;
 
-  const STORAGE_KEY = "mediana-energy-position";
+  const SCREEN_STORAGE_KEY = "mediana-energy-position";
+  const VALUE_STORAGE_KEY = "mediana-energy-value-position";
 
   const energyLayer = document.createElement("div");
   energyLayer.id = "energyScreenLayer";
@@ -79,133 +80,297 @@ onPositionChange = () => {}
   energyLayer.appendChild(screenImage);
   deviceWrap.appendChild(energyLayer);
 
-  
-const energyDisplay = document.createElement("div");
-energyDisplay.id = "energyValue";
-energyDisplay.textContent = INITIAL_ENERGY + " J";
+  const energyDisplay = document.createElement("div");
+  energyDisplay.id = "energyValue";
+  energyDisplay.textContent = INITIAL_ENERGY + " J";
 
-Object.assign(energyDisplay.style, {
-  position: "absolute",
-  display: "none",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "transparent",
-  color: "#ffd34e",
-  fontFamily: "Arial, sans-serif",
-  fontWeight: "bold",
-  whiteSpace: "nowrap",
-  zIndex: "5",
-  pointerEvents: "none",
-  userSelect: "none"
-});
-
-deviceWrap.appendChild(energyDisplay);
-
-
-  let editing = false;
-  let dragging = false;
-  let resizing = false;
-  let activeHandle = null;
-  let dragStart = null;
-
-  const editor = document.createElement("div");
-  editor.id = "energyScreenEditor";
-
-  Object.assign(editor.style, {
+  Object.assign(energyDisplay.style, {
     position: "absolute",
-    inset: "0",
     display: "none",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "transparent",
+    color: "#ffd34e",
+    fontFamily: "Arial, sans-serif",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+    zIndex: "5",
     pointerEvents: "none",
-    zIndex: "20"
+    userSelect: "none"
   });
 
-  const outline = document.createElement("div");
+  deviceWrap.appendChild(energyDisplay);
 
-  Object.assign(outline.style, {
-    position: "absolute",
-    border: "2px dashed #00aaff",
-    boxSizing: "border-box",
-    pointerEvents: "auto",
-    cursor: "move",
-    touchAction: "none"
-  });
-
-  editor.appendChild(outline);
-
-  const handles = {};
-
-  ["nw", "ne", "sw", "se"].forEach(name => {
-    const handle = document.createElement("div");
-
-    Object.assign(handle.style, {
-      position: "absolute",
-      width: "12px",
-      height: "12px",
-      background: "#00aaff",
-      border: "2px solid white",
-      borderRadius: "50%",
-      boxSizing: "border-box",
-      pointerEvents: "auto",
-      touchAction: "none",
-      cursor: name + "-resize"
-    });
-
-    outline.appendChild(handle);
-    handles[name] = handle;
-  });
-
-  Object.assign(handles.nw.style, { left: "-7px", top: "-7px" });
-  Object.assign(handles.ne.style, { right: "-7px", top: "-7px" });
-  Object.assign(handles.sw.style, { left: "-7px", bottom: "-7px" });
-  Object.assign(handles.se.style, { right: "-7px", bottom: "-7px" });
-
-  energyLayer.appendChild(editor);
-
-  let position = {
+  let screenPosition = {
     x: 48,
     y: 22,
     width: 12,
     height: 10
   };
 
-  function loadPosition() {
+  let valuePosition = {
+    x: 48,
+    y: 22,
+    width: 12,
+    height: 10
+  };
+
+  function loadPosition(key, current) {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      const saved = JSON.parse(localStorage.getItem(key));
+
       if (
         saved &&
         ["x", "y", "width", "height"].every(
-          key => Number.isFinite(saved[key])
+          name => Number.isFinite(saved[name])
         )
       ) {
-        position = saved;
+        return { ...saved };
       }
     } catch (_) {}
+
+    return { ...current };
   }
 
-  function savePosition() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
+  function savePosition(key, position) {
+    try {
+      localStorage.setItem(key, JSON.stringify(position));
+    } catch (error) {
+      console.error("Не вдалося зберегти координати:", error);
+    }
   }
 
-  function applyPosition() {
-    screenImage.style.left = position.x + "%";
-    screenImage.style.top = position.y + "%";
-    screenImage.style.width = position.width + "%";
-    screenImage.style.height = position.height + "%";
+  screenPosition = loadPosition(SCREEN_STORAGE_KEY, screenPosition);
+  valuePosition = loadPosition(VALUE_STORAGE_KEY, valuePosition);
 
-    energyDisplay.style.left = position.x + "%";
-    energyDisplay.style.top = position.y + "%";
-    energyDisplay.style.width = position.width + "%";
-    energyDisplay.style.height = position.height + "%";
+  function createPositionEditor({
+    id,
+    position,
+    storageKey,
+    callback,
+    zIndex
+  }) {
+    const editor = document.createElement("div");
+    editor.id = id;
 
-    outline.style.left = position.x + "%";
-    outline.style.top = position.y + "%";
-    outline.style.width = position.width + "%";
-    outline.style.height = position.height + "%";
-    onPositionChange({ ...position });
+    Object.assign(editor.style, {
+      position: "absolute",
+      inset: "0",
+      display: "none",
+      pointerEvents: "none",
+      zIndex: String(zIndex)
+    });
+
+    const outline = document.createElement("div");
+
+    Object.assign(outline.style, {
+      position: "absolute",
+      border: "2px dashed #00aaff",
+      boxSizing: "border-box",
+      pointerEvents: "auto",
+      cursor: "move",
+      touchAction: "none"
+    });
+
+    editor.appendChild(outline);
+
+    const handles = {};
+
+    ["nw", "ne", "sw", "se"].forEach(name => {
+      const handle = document.createElement("div");
+
+      Object.assign(handle.style, {
+        position: "absolute",
+        width: "12px",
+        height: "12px",
+        background: "#00aaff",
+        border: "2px solid white",
+        borderRadius: "50%",
+        boxSizing: "border-box",
+        pointerEvents: "auto",
+        touchAction: "none",
+        cursor: name + "-resize"
+      });
+
+      outline.appendChild(handle);
+      handles[name] = handle;
+    });
+
+    Object.assign(handles.nw.style, { left: "-7px", top: "-7px" });
+    Object.assign(handles.ne.style, { right: "-7px", top: "-7px" });
+    Object.assign(handles.sw.style, { left: "-7px", bottom: "-7px" });
+    Object.assign(handles.se.style, { right: "-7px", bottom: "-7px" });
+
+    deviceWrap.appendChild(editor);
+
+    let editing = false;
+    let dragging = false;
+    let resizing = false;
+    let activeHandle = null;
+    let dragStart = null;
+
+    function applyPosition() {
+      outline.style.left = position.x + "%";
+      outline.style.top = position.y + "%";
+      outline.style.width = position.width + "%";
+      outline.style.height = position.height + "%";
+
+      callback({ ...position });
+    }
+
+    function setEditing(value) {
+      editing = Boolean(value);
+      editor.style.display = editing ? "block" : "none";
+      editor.style.pointerEvents = editing ? "auto" : "none";
+      applyPosition();
+    }
+
+    function beginEdit(event, type, handle = null) {
+      if (!editing) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      dragging = type === "move";
+      resizing = type === "resize";
+      activeHandle = handle;
+
+      dragStart = {
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        ...position
+      };
+
+      outline.setPointerCapture(event.pointerId);
+    }
+
+    outline.addEventListener("pointerdown", event => {
+      if (event.target !== outline) return;
+      beginEdit(event, "move");
+    });
+
+    Object.entries(handles).forEach(([name, handle]) => {
+      handle.addEventListener("pointerdown", event => {
+        beginEdit(event, "resize", name);
+      });
+    });
+
+    outline.addEventListener("pointermove", event => {
+      if (!editing || (!dragging && !resizing) || !dragStart) return;
+
+      const rect = deviceWrap.getBoundingClientRect();
+
+      const dx =
+        (event.clientX - dragStart.pointerX) / rect.width * 100;
+
+      const dy =
+        (event.clientY - dragStart.pointerY) / rect.height * 100;
+
+      if (dragging) {
+        position.x = Math.max(
+          0,
+          Math.min(100 - position.width, dragStart.x + dx)
+        );
+
+        position.y = Math.max(
+          0,
+          Math.min(100 - position.height, dragStart.y + dy)
+        );
+      }
+
+      if (resizing) {
+        const right = dragStart.x + dragStart.width;
+        const bottom = dragStart.y + dragStart.height;
+
+        if (activeHandle.includes("e")) {
+          position.width = Math.max(
+            1,
+            Math.min(100 - position.x, dragStart.width + dx)
+          );
+        }
+
+        if (activeHandle.includes("s")) {
+          position.height = Math.max(
+            1,
+            Math.min(100 - position.y, dragStart.height + dy)
+          );
+        }
+
+        if (activeHandle.includes("w")) {
+          const newX = Math.max(0, dragStart.x + dx);
+          position.width = Math.max(1, right - newX);
+          position.x = newX;
+        }
+
+        if (activeHandle.includes("n")) {
+          const newY = Math.max(0, dragStart.y + dy);
+          position.height = Math.max(1, bottom - newY);
+          position.y = newY;
+        }
+      }
+
+      applyPosition();
+    });
+
+    function endEdit() {
+      if (!dragging && !resizing) return;
+
+      dragging = false;
+      resizing = false;
+      activeHandle = null;
+      dragStart = null;
+
+      savePosition(storageKey, position);
+    }
+
+    outline.addEventListener("pointerup", endEdit);
+    outline.addEventListener("pointercancel", endEdit);
+
+    applyPosition();
+
+    return {
+      setEditing,
+      getPosition: () => ({ ...position }),
+      applyPosition
+    };
   }
 
-  loadPosition();
-  applyPosition();
+  const screenEditor = createPositionEditor({
+    id: "energyScreenEditor",
+    position: screenPosition,
+    storageKey: SCREEN_STORAGE_KEY,
+    callback: onPositionChange,
+    zIndex: 20
+  });
+
+  const valueEditor = createPositionEditor({
+    id: "energyValueEditor",
+    position: valuePosition,
+    storageKey: VALUE_STORAGE_KEY,
+    callback: onValuePositionChange,
+    zIndex: 21
+  });
+
+  function applyScreenPosition() {
+    screenImage.style.left = screenPosition.x + "%";
+    screenImage.style.top = screenPosition.y + "%";
+    screenImage.style.width = screenPosition.width + "%";
+    screenImage.style.height = screenPosition.height + "%";
+
+    screenEditor.applyPosition();
+  }
+
+  function applyValuePosition() {
+    energyDisplay.style.left = valuePosition.x + "%";
+    energyDisplay.style.top = valuePosition.y + "%";
+    energyDisplay.style.width = valuePosition.width + "%";
+    energyDisplay.style.height = valuePosition.height + "%";
+
+    valueEditor.applyPosition();
+  }
+
+  applyScreenPosition();
+  applyValuePosition();
 
   function getCurrentValue() {
     return ENERGY_STEPS[selectedIndex];
@@ -262,12 +427,13 @@ deviceWrap.appendChild(energyDisplay);
 
     energyLayer.style.display = "none";
     energyDisplay.style.display = "none";
-    editing = false;
-    editor.style.display = "none";
+
+    screenEditor.setEditing(false);
+    valueEditor.setEditing(false);
   }
 
   function pointerDown(event) {
-    if (!enabled || pointerActive || confirmed || editing) return;
+    if (!enabled || pointerActive || confirmed) return;
     if (event.button !== undefined && event.button !== 0) return;
 
     pointerActive = true;
@@ -356,96 +522,25 @@ deviceWrap.appendChild(energyDisplay);
   }
 
   function setDisplayPosition({ x, y, width, height }) {
-    position = { x, y, width, height };
-    applyPosition();
-    savePosition();
+    screenPosition = { x, y, width, height };
+    applyScreenPosition();
+    savePosition(SCREEN_STORAGE_KEY, screenPosition);
+  }
+
+  function setValuePosition({ x, y, width, height }) {
+    valuePosition = { x, y, width, height };
+    applyValuePosition();
+    savePosition(VALUE_STORAGE_KEY, valuePosition);
   }
 
   function setEditing(value) {
-    editing = Boolean(value);
-    editor.style.display = editing ? "block" : "none";
-    energyLayer.style.pointerEvents = editing ? "auto" : "none";
-    screenImage.style.pointerEvents = editing ? "none" : "none";
+    screenEditor.setEditing(value);
+    energyLayer.style.pointerEvents = value ? "auto" : "none";
   }
 
-  function beginEdit(event, type, handle = null) {
-    if (!editing) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    dragging = type === "move";
-    resizing = type === "resize";
-    activeHandle = handle;
-
-    dragStart = {
-      pointerX: event.clientX,
-      pointerY: event.clientY,
-      ...position
-    };
-
-    outline.setPointerCapture(event.pointerId);
+  function setValueEditing(value) {
+    valueEditor.setEditing(value);
   }
-
-  outline.addEventListener("pointerdown", event => {
-    if (event.target !== outline) return;
-    beginEdit(event, "move");
-  });
-
-  Object.entries(handles).forEach(([name, handle]) => {
-    handle.addEventListener("pointerdown", event => {
-      beginEdit(event, "resize", name);
-    });
-  });
-
-  outline.addEventListener("pointermove", event => {
-    if (!editing || (!dragging && !resizing) || !dragStart) return;
-
-    const rect = deviceWrap.getBoundingClientRect();
-    const dx = (event.clientX - dragStart.pointerX) / rect.width * 100;
-    const dy = (event.clientY - dragStart.pointerY) / rect.height * 100;
-
-    if (dragging) {
-      position.x = dragStart.x + dx;
-      position.y = dragStart.y + dy;
-    }
-
-    if (resizing) {
-      const right = dragStart.x + dragStart.width;
-      const bottom = dragStart.y + dragStart.height;
-
-      if (activeHandle.includes("e")) {
-        position.width = Math.max(1, dragStart.width + dx);
-      }
-      if (activeHandle.includes("s")) {
-        position.height = Math.max(1, dragStart.height + dy);
-      }
-      if (activeHandle.includes("w")) {
-        position.x = dragStart.x + dx;
-        position.width = Math.max(1, right - position.x);
-      }
-      if (activeHandle.includes("n")) {
-        position.y = dragStart.y + dy;
-        position.height = Math.max(1, bottom - position.y);
-      }
-    }
-
-    applyPosition();
-  });
-
-  function endEdit() {
-    if (!dragging && !resizing) return;
-
-    dragging = false;
-    resizing = false;
-    activeHandle = null;
-    dragStart = null;
-
-    savePosition();
-  }
-
-  outline.addEventListener("pointerup", endEdit);
-  outline.addEventListener("pointercancel", endEdit);
 
   function destroy() {
     close();
@@ -457,6 +552,9 @@ deviceWrap.appendChild(energyDisplay);
 
     energyLayer.remove();
     energyDisplay.remove();
+
+    document.getElementById("energyScreenEditor")?.remove();
+    document.getElementById("energyValueEditor")?.remove();
   }
 
   knob.addEventListener("pointerdown", pointerDown);
@@ -472,8 +570,11 @@ deviceWrap.appendChild(energyDisplay);
     getCurrentIndex,
     setValue,
     setDisplayPosition,
+    setValuePosition,
     setEditing,
-    getPosition: () => ({ ...position }),
+    setValueEditing,
+    getPosition: () => ({ ...screenPosition }),
+    getValuePosition: () => ({ ...valuePosition }),
     destroy
   };
 }
