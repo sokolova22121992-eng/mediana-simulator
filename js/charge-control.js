@@ -309,7 +309,7 @@ export function createChargeControl({
 
       original = { ...positions[id] };
 
-      handle.setPointerCapture?.(event.pointerId);
+      event.currentTarget.setPointerCapture(event.pointerId);
     }
 
 
