@@ -383,9 +383,17 @@ button, select { font: inherit; }
 </main>
 
 <script type="module">
-import { getState, subscribe } from "./js/device-state.js";
+import {
+  getState,
+  subscribe,
+  setEnergy,
+  setCharged,
+  setMessage
+} from "./js/device-state.js";
+
 import { selectMode, MODES } from "./js/mode-control.js";
- import { createEnergyControl } from "./js/energy-control.js";
+import { createEnergyControl } from "./js/energy-control.js";
+import { createChargeControl } from "./js/charge-control.js";
 
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
@@ -656,11 +664,10 @@ zones.forEach(zone => {
   }
 
   const zoneId = zone.dataset.id;
+  const state = getState();
 
-  // Вибір енергії доступний тільки в ручному режимі
+  // Вибір енергії
   if (zoneId === "energy") {
-    const state = getState();
-
     if (!state.power || state.mode !== MODES.MANUAL) {
       testResult.textContent =
         "Спочатку увімкніть ручний режим.";
@@ -673,13 +680,50 @@ zones.forEach(zone => {
     return;
   }
 
+  // Заряджання
+  if (zoneId === "charge") {
+    if (!state.power || state.mode !== MODES.MANUAL) {
+      testResult.textContent =
+        "Для заряджання увімкніть ручний режим.";
+      return;
+    }
+
+    try {
+      chargeControl.start();
+      testResult.textContent = "Триває заряджання...";
+    } catch (error) {
+      testResult.textContent = error.message;
+    }
+
+    return;
+  }
+
+  // Розряд
+  if (zoneId === "shock") {
+    if (!state.power || state.mode !== MODES.MANUAL) {
+      testResult.textContent =
+        "Для виконання розряду увімкніть ручний режим.";
+      return;
+    }
+
+    if (!state.charged) {
+      testResult.textContent =
+        "Спочатку виконайте заряджання.";
+      return;
+    }
+
+    setCharged(false);
+    setMessage("Розряд виконано");
+    testResult.textContent = "Розряд виконано.";
+
+    return;
+  }
+
   testResult.textContent =
     "Натиснута зона: " +
     (names[zoneId] || zoneId) +
     ". Логіку цієї дії підключимо окремим етапом.";
 });
-  });
-
 zoneSelect.addEventListener("change", () => {
   selectZone(zoneSelect.value);
 });
@@ -752,6 +796,8 @@ const energyControl = createEnergyControl({
   },
 
   onConfirm(value) {
+    setEnergy(value);
+    setMessage(`Енергію встановлено: ${value} J`);
     console.log("Енергію підтверджено:", value, "J");
   },
 
@@ -766,6 +812,13 @@ const energyControl = createEnergyControl({
       showEnergyValueCoordinates(p);
     }
   }
+});
+  const chargeControl = createChargeControl({
+  deviceWrap: wrap,
+  coordinatePanel: coordText,
+  selectedName: selectedName,
+  duration: 5000,
+  image: "mediana-charge.png"
 });
 
 const energyPositionBtn = document.createElement("button");
