@@ -670,7 +670,13 @@ export function createChargeControl({
     createEditorButton(id);
   });
 
-  deviceWrap.parentElement.appendChild(editorPanel);
+  deviceWrap.parentEleconst workspace = document.querySelector(".workspace");
+
+if (!workspace) {
+  throw new Error("Не знайдено праву робочу панель.");
+}
+
+workspace.appendChild(editorPanel);ment.appendChild(editorPanel);
 
   Object.values(elements).forEach(element => {
     element.style.display = "none";
