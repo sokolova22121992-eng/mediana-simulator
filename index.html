@@ -147,6 +147,13 @@ height: 3.0986%;
   padding: 24px;
   background: #111820;
 }
+  .charge-editor-controls {
+  display: none !important;
+}
+
+.simulator.editing .charge-editor-controls {
+  display: flex !important;
+}
 
 h1 { font-size: 25px; margin: 0 0 18px; }
 h2 { font-size: 17px; margin: 22px 0 10px; }
@@ -580,6 +587,8 @@ function updateCoordinates() {
 function setEditing(value) {
   editing = value;
   wrap.classList.toggle("editing", editing);
+  document.querySelector(".simulator")
+  .classList.toggle("editing", editing);
 
   editToggle.classList.toggle("active", editing);
   editToggle.textContent =
