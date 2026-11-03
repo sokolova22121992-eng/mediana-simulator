@@ -1,13 +1,14 @@
 /**
  * MEDIANA D500 Simulator
- * Керування візуальними елементами заряджання.
+ * Модуль екрана та процесу заряджання.
  *
- * Елементи:
- * 1. Індикатор процесу заряджання.
- * 2. Основні цифри енергії.
- * 3. Малий індикатор підтвердженої енергії.
+ * 4 незалежні елементи:
+ * 1. Фото mediana-charge.png
+ * 2. Індикатор процесу заряджання
+ * 3. Основні цифри J
+ * 4. Малий індикатор підтвердженої енергії J
  *
- * Координати та розміри зберігаються автоматично.
+ * Координати та розміри зберігаються в localStorage.
  */
 
 import {
@@ -19,29 +20,44 @@ import {
 } from "./device-state.js";
 
 
-const STORAGE_KEY = "mediana-charge-elements";
+const STORAGE_KEY = "mediana-charge-layout-v1";
 
 const DEFAULT_POSITIONS = {
+  screen: {
+    x: 48,
+    y: 22,
+    width: 12,
+    height: 10
+  },
+
   progress: {
-    x: 45,
-    y: 35,
-    width: 20,
-    height: 3
+    x: 49,
+    y: 30,
+    width: 10,
+    height: 2
   },
 
   mainEnergy: {
-    x: 45,
-    y: 40,
-    width: 20,
-    height: 8
+    x: 49,
+    y: 32,
+    width: 10,
+    height: 5
   },
 
   smallEnergy: {
-    x: 70,
-    y: 20,
-    width: 8,
-    height: 4
+    x: 55,
+    y: 23,
+    width: 4,
+    height: 2
   }
+};
+
+
+const ELEMENT_NAMES = {
+  screen: "Екран mediana-charge",
+  progress: "Індикатор заряджання",
+  mainEnergy: "Основні цифри J",
+  smallEnergy: "Малий індикатор підтвердженої енергії J"
 };
 
 
@@ -50,37 +66,32 @@ export function createChargeControl({
   coordinatePanel = document.getElementById("coordText"),
   selectedName = document.getElementById("selectedName"),
   duration = 5000,
+  image = "mediana-charge.png",
   onProgress = () => {},
   onComplete = () => {},
   onCancel = () => {}
 } = {}) {
 
   if (!deviceWrap) {
-    throw new Error("Не знайдено область пристрою deviceWrap.");
+    throw new Error("Не знайдено область deviceWrap.");
+  }
+
+  if (!Number.isFinite(duration) || duration <= 0) {
+    throw new Error("Некоректна тривалість заряджання.");
   }
 
   let timer = null;
   let startTime = null;
   let targetEnergy = null;
-  let currentElement = null;
-  let editing = false;
+  let editingElement = null;
 
-  const savedPositions = loadPositions();
-
+  const positions = loadPositions();
   const elements = {};
   const buttons = {};
 
-  const unsubscribe = subscribe(state => {
-    updateConfirmedEnergy(state.energy);
-
-    if (
-      isCharging() &&
-      (!state.power || state.mode !== "manual")
-    ) {
-      cancel("Заряджання скасовано");
-    }
-  });
-
+  // --------------------------------------------------
+  // ЗАВАНТАЖЕННЯ ТА ЗБЕРЕЖЕННЯ КООРДИНАТ
+  // --------------------------------------------------
 
   function loadPositions() {
     try {
@@ -88,24 +99,21 @@ export function createChargeControl({
         localStorage.getItem(STORAGE_KEY)
       );
 
-      return {
-        progress: {
-          ...DEFAULT_POSITIONS.progress,
-          ...(saved?.progress || {})
-        },
+      const result = {};
 
-        mainEnergy: {
-          ...DEFAULT_POSITIONS.mainEnergy,
-          ...(saved?.mainEnergy || {})
-        },
+      Object.keys(DEFAULT_POSITIONS).forEach(id => {
+        result[id] = {
+          ...DEFAULT_POSITIONS[id],
+          ...(saved?.[id] || {})
+        };
+      });
 
-        smallEnergy: {
-          ...DEFAULT_POSITIONS.smallEnergy,
-          ...(saved?.smallEnergy || {})
-        }
-      };
+      return result;
+
     } catch {
-      return structuredClone(DEFAULT_POSITIONS);
+      return JSON.parse(
+        JSON.stringify(DEFAULT_POSITIONS)
+      );
     }
   }
 
@@ -113,12 +121,16 @@ export function createChargeControl({
   function savePositions() {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify(savedPositions)
+      JSON.stringify(positions)
     );
   }
 
 
-  function createElement(id, className) {
+  // --------------------------------------------------
+  // СТВОРЕННЯ ЕЛЕМЕНТІВ
+  // --------------------------------------------------
+
+  function createBaseElement(id, className) {
     const element = document.createElement("div");
 
     element.className = className;
@@ -127,34 +139,58 @@ export function createChargeControl({
     Object.assign(element.style, {
       position: "absolute",
       boxSizing: "border-box",
-      left: savedPositions[id].x + "%",
-      top: savedPositions[id].y + "%",
-      width: savedPositions[id].width + "%",
-      height: savedPositions[id].height + "%",
+      left: positions[id].x + "%",
+      top: positions[id].y + "%",
+      width: positions[id].width + "%",
+      height: positions[id].height + "%",
       display: "none",
       zIndex: "15"
     });
 
     deviceWrap.appendChild(element);
-
     elements[id] = element;
 
     return element;
   }
 
 
-  function createProgressElement() {
-    const outer = createElement(
+  function createScreen() {
+    const screen = createBaseElement(
+      "screen",
+      "charge-screen-image"
+    );
+
+    const img = document.createElement("img");
+
+    img.src = image;
+    img.alt = "Екран заряджання MEDIANA";
+    img.draggable = false;
+
+    Object.assign(img.style, {
+      width: "100%",
+      height: "100%",
+      objectFit: "fill",
+      display: "block",
+      pointerEvents: "none",
+      userSelect: "none"
+    });
+
+    screen.appendChild(img);
+
+    return screen;
+  }
+
+
+  function createProgress() {
+    const outer = createBaseElement(
       "progress",
       "charge-progress"
     );
 
     Object.assign(outer.style, {
-      border: "1px solid rgba(255,255,255,.8)",
-      background: "rgba(0,0,0,.45)",
       overflow: "hidden",
-      borderRadius: "2px",
-      cursor: "default"
+      background: "rgba(0,0,0,0.25)",
+      border: "1px solid rgba(255,255,255,0.8)"
     });
 
     const fill = document.createElement("div");
@@ -174,209 +210,111 @@ export function createChargeControl({
   }
 
 
-  function createEnergyElement(id, className) {
-    const element = createElement(id, className);
+  function createEnergyText(id, className) {
+    const element = createBaseElement(id, className);
 
     Object.assign(element.style, {
+      display: "none",
+      alignItems: "center",
+      justifyContent: "center",
       color: "#ffffff",
       fontFamily: "Arial, sans-serif",
       fontWeight: "bold",
       textAlign: "center",
-      alignItems: "center",
-      justifyContent: "center",
       whiteSpace: "nowrap",
-      textShadow: "0 1px 3px #000",
-      overflow: "hidden"
+      textShadow: "0 1px 3px #000000",
+      overflow: "hidden",
+      userSelect: "none"
     });
-
-    element.style.display = "none";
 
     return element;
   }
 
 
-  function createEditorButton(id, label) {
-    const button = document.createElement("button");
-
-    button.type = "button";
-    button.textContent = label;
-    button.className = "tool-button";
-
-    button.addEventListener("click", () => {
-      setEditing(currentElement !== id, id);
-    });
-
-    buttons[id] = button;
-
-    return button;
-  }
-
-
-  function createEditorControls() {
-    const panel = document.createElement("div");
-
-    panel.className = "charge-editor-controls";
-
-    Object.assign(panel.style, {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "6px",
-      marginTop: "8px"
-    });
-
-    panel.append(
-      createEditorButton(
-        "progress",
-        "Редагувати індикатор заряджання"
-      ),
-      createEditorButton(
-        "mainEnergy",
-        "Редагувати основні цифри J"
-      ),
-      createEditorButton(
-        "smallEnergy",
-        "Редагувати малий індикатор J"
-      )
-    );
-
-    deviceWrap.parentElement.appendChild(panel);
-  }
-
+  // --------------------------------------------------
+  // КООРДИНАТИ
+  // --------------------------------------------------
 
   function applyPosition(id) {
     const element = elements[id];
-    const position = savedPositions[id];
+    const p = positions[id];
 
-    element.style.left = position.x + "%";
-    element.style.top = position.y + "%";
-    element.style.width = position.width + "%";
-    element.style.height = position.height + "%";
+    element.style.left = p.x + "%";
+    element.style.top = p.y + "%";
+    element.style.width = p.width + "%";
+    element.style.height = p.height + "%";
   }
 
 
   function updateCoordinatePanel(id) {
-    if (!coordinatePanel) {
-      return;
-    }
+    if (!coordinatePanel) return;
 
-    const position = savedPositions[id];
+    const p = positions[id];
 
     if (selectedName) {
-      selectedName.textContent = {
-        progress: "Індикатор заряджання",
-        mainEnergy: "Основні цифри J",
-        smallEnergy: "Малий індикатор підтвердженої енергії"
-      }[id];
+      selectedName.textContent = ELEMENT_NAMES[id];
     }
 
     coordinatePanel.textContent =
-      `X: ${position.x.toFixed(4)}% | ` +
-      `Y: ${position.y.toFixed(4)}% | ` +
-      `W: ${position.width.toFixed(4)}% | ` +
-      `H: ${position.height.toFixed(4)}%`;
+      `X: ${p.x.toFixed(4)}% | ` +
+      `Y: ${p.y.toFixed(4)}% | ` +
+      `W: ${p.width.toFixed(4)}% | ` +
+      `H: ${p.height.toFixed(4)}%`;
   }
 
 
-  function setEditing(enabled, id = currentElement) {
-    editing = enabled;
+  // --------------------------------------------------
+  // РЕДАГУВАННЯ ТА ПЕРЕМІЩЕННЯ
+  // --------------------------------------------------
 
-    if (enabled && !elements[id]) {
-      return;
-    }
-
-    currentElement = enabled ? id : null;
-
-    Object.entries(elements).forEach(([key, element]) => {
-      element.style.outline =
-        enabled && key === id
-          ? "2px dashed #00a8ff"
-          : "none";
-
-      element.style.cursor =
-        enabled && key === id
-          ? "move"
-          : "default";
-    });
-
-    Object.entries(buttons).forEach(([key, button]) => {
-      button.style.background =
-        enabled && key === id
-          ? "#1677d2"
-          : "";
-    });
-
-    if (enabled) {
-      updateCoordinatePanel(id);
-    }
-  }
-
-
-  function makeDraggable(id) {
+  function makeEditable(id) {
     const element = elements[id];
-
-    let startX = 0;
-    let startY = 0;
-    let originalX = 0;
-    let originalY = 0;
-    let originalWidth = 0;
-    let originalHeight = 0;
-    let resizing = false;
 
     const handle = document.createElement("div");
 
     Object.assign(handle.style, {
       position: "absolute",
+      right: "-5px",
+      bottom: "-5px",
       width: "12px",
       height: "12px",
-      right: "0",
-      bottom: "0",
       background: "#00a8ff",
       border: "1px solid white",
+      boxSizing: "border-box",
       cursor: "nwse-resize",
       display: "none",
-      zIndex: "20"
+      zIndex: "30"
     });
 
     element.appendChild(handle);
 
-    function begin(event, resize) {
-      if (!editing || currentElement !== id) {
-        return;
-      }
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let original = null;
+    let resizing = false;
+
+
+    function pointerDown(event, resize) {
+      if (editingElement !== id) return;
 
       event.preventDefault();
       event.stopPropagation();
 
+      pointerId = event.pointerId;
       resizing = resize;
-
-      const rect = deviceWrap.getBoundingClientRect();
-      const position = savedPositions[id];
 
       startX = event.clientX;
       startY = event.clientY;
 
-      originalX = position.x;
-      originalY = position.y;
-      originalWidth = position.width;
-      originalHeight = position.height;
+      original = { ...positions[id] };
 
-      element.setPointerCapture?.(event.pointerId);
+      handle.setPointerCapture?.(event.pointerId);
     }
 
-    element.addEventListener("pointerdown", event => {
-      if (event.target === handle) {
-        return;
-      }
 
-      begin(event, false);
-    });
-
-    handle.addEventListener("pointerdown", event => {
-      begin(event, true);
-    });
-
-    element.addEventListener("pointermove", event => {
-      if (!element.hasPointerCapture?.(event.pointerId)) {
+    function pointerMove(event) {
+      if (pointerId !== event.pointerId || !original) {
         return;
       }
 
@@ -388,49 +326,141 @@ export function createChargeControl({
       const dy =
         (event.clientY - startY) / rect.height * 100;
 
-      const position = savedPositions[id];
+      const p = positions[id];
 
       if (resizing) {
-        position.width = Math.max(
-          1,
-          originalWidth + dx
+        p.width = Math.max(
+          0.5,
+          Math.min(100 - p.x, original.width + dx)
         );
 
-        position.height = Math.max(
-          1,
-          originalHeight + dy
+        p.height = Math.max(
+          0.5,
+          Math.min(100 - p.y, original.height + dy)
         );
+
       } else {
-        position.x = Math.max(
+        p.x = Math.max(
           0,
-          Math.min(100 - position.width, originalX + dx)
+          Math.min(100 - p.width, original.x + dx)
         );
 
-        position.y = Math.max(
+        p.y = Math.max(
           0,
-          Math.min(100 - position.height, originalY + dy)
+          Math.min(100 - p.height, original.y + dy)
         );
       }
 
       applyPosition(id);
       updateCoordinatePanel(id);
       savePositions();
+    }
+
+
+    function pointerUp(event) {
+      if (pointerId !== event.pointerId) return;
+
+      pointerId = null;
+      original = null;
+
+      savePositions();
+    }
+
+
+    element.addEventListener("pointerdown", event => {
+      if (event.target === handle) return;
+      pointerDown(event, false);
     });
 
-    element.addEventListener("pointerup", () => {
-      if (editing && currentElement === id) {
-        savePositions();
-      }
+    handle.addEventListener("pointerdown", event => {
+      pointerDown(event, true);
     });
+
+    element.addEventListener("pointermove", pointerMove);
+    element.addEventListener("pointerup", pointerUp);
+    element.addEventListener("pointercancel", pointerUp);
 
     element._editorHandle = handle;
   }
 
 
-  function updateConfirmedEnergy(value) {
-    if (!elements.smallEnergy) {
-      return;
+  function setEditing(id = null) {
+    editingElement = id;
+
+    Object.keys(elements).forEach(key => {
+      const element = elements[key];
+      const active = key === id;
+
+      element.style.outline = active
+        ? "2px dashed #00a8ff"
+        : "none";
+
+      element.style.cursor = active
+        ? "move"
+        : "default";
+
+      element._editorHandle.style.display =
+        active ? "block" : "none";
+
+      if (buttons[key]) {
+        buttons[key].style.background =
+          active ? "#1677d2" : "";
+      }
+    });
+
+    if (id) {
+      elements[id].style.display = "block";
+      updateCoordinatePanel(id);
     }
+
+    return id;
+  }
+
+
+  // --------------------------------------------------
+  // КНОПКИ РЕДАГУВАННЯ
+  // --------------------------------------------------
+
+  const editorPanel = document.createElement("div");
+
+  editorPanel.className = "charge-editor-controls";
+
+  Object.assign(editorPanel.style, {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px",
+    marginTop: "8px"
+  });
+
+
+  function createEditorButton(id) {
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "tool-button";
+    button.textContent = "Редагувати: " + ELEMENT_NAMES[id];
+
+    button.addEventListener("click", () => {
+      const nextId = editingElement === id ? null : id;
+
+      setEditing(nextId);
+
+      if (nextId) {
+        showScreen();
+      }
+    });
+
+    buttons[id] = button;
+    editorPanel.appendChild(button);
+  }
+
+
+  // --------------------------------------------------
+  // ВІДОБРАЖЕННЯ ПІДТВЕРДЖЕНОЇ ЕНЕРГІЇ
+  // --------------------------------------------------
+
+  function updateConfirmedEnergy(value) {
+    if (!elements.smallEnergy) return;
 
     elements.smallEnergy.textContent =
       Number.isFinite(value) && value > 0
@@ -438,6 +468,10 @@ export function createChargeControl({
         : "";
   }
 
+
+  // --------------------------------------------------
+  // ПРОГРЕС ЗАРЯДЖАННЯ
+  // --------------------------------------------------
 
   function updateProgress(data) {
     elements.progress._fill.style.width =
@@ -455,6 +489,29 @@ export function createChargeControl({
   }
 
 
+  function showScreen() {
+    elements.screen.style.display = "block";
+    elements.smallEnergy.style.display = "flex";
+  }
+
+
+  function hideScreen() {
+    if (isCharging()) {
+      cancel();
+    }
+
+    Object.values(elements).forEach(element => {
+      element.style.display = "none";
+    });
+
+    setEditing(null);
+  }
+
+
+  // --------------------------------------------------
+  // ЗАПУСК ЗАРЯДЖАННЯ
+  // --------------------------------------------------
+
   function start() {
     const state = getState();
 
@@ -463,11 +520,15 @@ export function createChargeControl({
     }
 
     if (state.mode !== "manual") {
-      throw new Error("Заряджання доступне лише в ручному режимі.");
+      throw new Error(
+        "Заряджання доступне лише в ручному режимі."
+      );
     }
 
     if (!Number.isFinite(state.energy) || state.energy <= 0) {
-      throw new Error("Спочатку виберіть і підтвердьте енергію.");
+      throw new Error(
+        "Спочатку виберіть і підтвердьте енергію."
+      );
     }
 
     if (isCharging()) {
@@ -476,6 +537,8 @@ export function createChargeControl({
 
     targetEnergy = state.energy;
     startTime = Date.now();
+
+    showScreen();
 
     elements.progress.style.display = "block";
     elements.mainEnergy.style.display = "flex";
@@ -523,10 +586,12 @@ export function createChargeControl({
   }
 
 
+  // --------------------------------------------------
+  // ЗАВЕРШЕННЯ ЗАРЯДЖАННЯ
+  // --------------------------------------------------
+
   function finish() {
-    if (!isCharging()) {
-      return;
-    }
+    if (!isCharging()) return;
 
     clearInterval(timer);
     timer = null;
@@ -534,10 +599,9 @@ export function createChargeControl({
     setCharged(true);
     setMessage("Заряджання завершено");
 
+    elements.progress._fill.style.width = "100%";
     elements.mainEnergy.textContent =
       `${targetEnergy} J`;
-
-    elements.progress._fill.style.width = "100%";
 
     onComplete({
       energy: targetEnergy
@@ -545,10 +609,12 @@ export function createChargeControl({
   }
 
 
+  // --------------------------------------------------
+  // СКАСУВАННЯ ЗАРЯДЖАННЯ
+  // --------------------------------------------------
+
   function cancel(reason = "Заряджання скасовано") {
-    if (!isCharging()) {
-      return false;
-    }
+    if (!isCharging()) return false;
 
     clearInterval(timer);
     timer = null;
@@ -577,14 +643,20 @@ export function createChargeControl({
   }
 
 
-  elements.progress = createProgressElement();
+  // --------------------------------------------------
+  // СТВОРЕННЯ ВСІХ ЧОТИРЬОХ ЕЛЕМЕНТІВ
+  // --------------------------------------------------
 
-  elements.mainEnergy = createEnergyElement(
+  createScreen();
+
+  elements.progress = createProgress();
+
+  elements.mainEnergy = createEnergyText(
     "mainEnergy",
     "charge-main-energy"
   );
 
-  elements.smallEnergy = createEnergyElement(
+  elements.smallEnergy = createEnergyText(
     "smallEnergy",
     "charge-small-energy"
   );
@@ -594,33 +666,42 @@ export function createChargeControl({
 
   Object.keys(elements).forEach(id => {
     applyPosition(id);
-    makeDraggable(id);
+    makeEditable(id);
+    createEditorButton(id);
   });
 
-  createEditorControls();
-
-  updateConfirmedEnergy(getState().energy);
+  deviceWrap.parentElement.appendChild(editorPanel);
 
   Object.values(elements).forEach(element => {
     element.style.display = "none";
   });
 
-  function show() {
-    elements.progress.style.display = "block";
-    elements.mainEnergy.style.display = "flex";
-    elements.smallEnergy.style.display = "flex";
-  }
+  updateConfirmedEnergy(getState().energy);
 
-  function hide() {
-    if (isCharging()) {
-      cancel();
+
+  // --------------------------------------------------
+  // РЕАКЦІЯ НА ЗМІНИ СТАНУ ПРИСТРОЮ
+  // --------------------------------------------------
+
+  const unsubscribe = subscribe(state => {
+    updateConfirmedEnergy(state.energy);
+
+    if (
+      isCharging() &&
+      (!state.power || state.mode !== "manual")
+    ) {
+      cancel("Заряджання скасовано");
     }
 
-    Object.values(elements).forEach(element => {
-      element.style.display = "none";
-    });
-  }
+    if (!state.power) {
+      hideScreen();
+    }
+  });
 
+
+  // --------------------------------------------------
+  // ЗНИЩЕННЯ МОДУЛЯ
+  // --------------------------------------------------
 
   function destroy() {
     cancel();
@@ -630,22 +711,20 @@ export function createChargeControl({
       element.remove();
     });
 
-    Object.values(buttons).forEach(button => {
-      button.remove();
-    });
+    editorPanel.remove();
   }
 
 
   return {
     start,
     cancel,
-    show,
-    hide,
+    show: showScreen,
+    hide: hideScreen,
     isCharging,
     setEditing,
-    destroy,
     getPositions() {
-      return structuredClone(savedPositions);
-    }
+      return JSON.parse(JSON.stringify(positions));
+    },
+    destroy
   };
 }
