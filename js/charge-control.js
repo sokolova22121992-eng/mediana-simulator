@@ -236,14 +236,29 @@ export function createChargeControl({
   // --------------------------------------------------
 
   function applyPosition(id) {
-    const element = elements[id];
-    const p = positions[id];
+  const element = elements[id];
+  const p = positions[id];
 
-    element.style.left = p.x + "%";
-    element.style.top = p.y + "%";
-    element.style.width = p.width + "%";
-    element.style.height = p.height + "%";
+  element.style.left = p.x + "%";
+  element.style.top = p.y + "%";
+  element.style.width = p.width + "%";
+  element.style.height = p.height + "%";
+
+  // Автоматичне масштабування шрифту відповідно до рамки
+  if (id === "mainEnergy" || id === "smallEnergy") {
+    const rect = deviceWrap.getBoundingClientRect();
+
+    const frameWidth = rect.width * p.width / 100;
+    const frameHeight = rect.height * p.height / 100;
+
+    const fontSize = Math.max(
+      4,
+      Math.min(frameHeight * 0.75, frameWidth / 5.5)
+    );
+
+    element.style.fontSize = fontSize + "px";
   }
+}
 
 
   function updateCoordinatePanel(id) {
