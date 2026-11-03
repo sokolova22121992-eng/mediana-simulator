@@ -274,10 +274,10 @@ export function createChargeControl({
 
     Object.assign(handle.style, {
       position: "absolute",
-      right: "-5px",
-      bottom: "-5px",
-      width: "12px",
-      height: "12px",
+      right: "0px",
+bottom: "0px",
+width: "12px",
+height: "12px",
       background: "#00a8ff",
       border: "1px solid white",
       boxSizing: "border-box",
