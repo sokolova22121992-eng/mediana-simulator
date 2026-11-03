@@ -676,9 +676,6 @@ height: "12px",
     "charge-small-energy"
   );
 
-  elements.mainEnergy.style.fontSize = "min(5vw, 32px)";
-  elements.smallEnergy.style.fontSize = "min(2vw, 14px)";
-
   Object.keys(elements).forEach(id => {
     applyPosition(id);
     makeEditable(id);
