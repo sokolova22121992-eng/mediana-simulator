@@ -303,14 +303,18 @@ height: "12px",
 
     element.appendChild(handle);
 
-    let pointerId = null;
-    let startX = 0;
-    let startY = 0;
-    let original = null;
-    let resizing = false;
+   right: "0px",
+bottom: "0px",
+width: "16px",
+height: "16px",
+background: "#00a8ff",
+border: "2px solid white",
+boxSizing: "border-box",
+cursor: "nwse-resize",
+touchAction: "none",
+pointerEvents: "auto",
 
-
-    function pointerDown(event, resize) {
+function pointerDown(event, resize) {
       if (editingElement !== id) return;
 
       event.preventDefault();
@@ -324,7 +328,7 @@ height: "12px",
 
       original = { ...positions[id] };
 
-      event.currentTarget.setPointerCapture(event.pointerId);
+      element.setPointerCapture(event.pointerId);
     }
 
 
@@ -438,18 +442,31 @@ height: "12px",
 
   const editorPanel = document.createElement("div");
 
-  editorPanel.className = "charge-editor-controls";
+editorPanel.className = "charge-editor-controls";
 
-  Object.assign(editorPanel.style, {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "6px",
-    marginTop: "8px"
-  });
+Object.assign(editorPanel.style, {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px",
+  marginTop: "8px",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: "0",
+  boxSizing: "border-box"
+});
 
 
   function createEditorButton(id) {
     const button = document.createElement("button");
+    Object.assign(button.style, {
+  boxSizing: "border-box",
+  flex: "1 1 280px",
+  minWidth: "0",
+  maxWidth: "100%",
+  whiteSpace: "normal",
+  overflowWrap: "anywhere",
+  textAlign: "left"
+});
 
     button.type = "button";
     button.className = "tool-button";
