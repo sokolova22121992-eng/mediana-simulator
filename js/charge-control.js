@@ -244,7 +244,6 @@ export function createChargeControl({
   element.style.width = p.width + "%";
   element.style.height = p.height + "%";
 
-  // Автоматичне масштабування шрифту відповідно до рамки
   if (id === "mainEnergy" || id === "smallEnergy") {
     const rect = deviceWrap.getBoundingClientRect();
 
@@ -253,10 +252,17 @@ export function createChargeControl({
 
     const fontSize = Math.max(
       4,
-      Math.min(frameHeight * 0.75, frameWidth / 5.5)
+      Math.min(
+        frameHeight * 0.8,
+        frameWidth / 5
+      )
     );
 
-    element.style.fontSize = fontSize + "px";
+    element.style.setProperty(
+      "font-size",
+      fontSize + "px",
+      "important"
+    );
   }
 }
 
