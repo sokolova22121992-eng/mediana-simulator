@@ -182,32 +182,37 @@ export function createChargeControl({
 
 
   function createProgress() {
-    const outer = createBaseElement(
-      "progress",
-      "charge-progress"
-    );
+  const outer = createBaseElement(
+    "progress",
+    "charge-progress"
+  );
 
-    Object.assign(outer.style, {
-      overflow: "hidden",
-      background: "rgba(0,0,0,0.25)",
-      border: "1px solid rgba(255,255,255,0.8)"
-    });
+  Object.assign(outer.style, {
+    overflow: "hidden",
+    background: "#000000",
+    border: "1px solid rgba(255,255,255,0.8)"
+  });
 
-    const fill = document.createElement("div");
+  const fill = document.createElement("div");
 
-    Object.assign(fill.style, {
-      width: "0%",
-      height: "100%",
-      background: "#00a8ff",
-      transition: "width 50ms linear"
-    });
+  Object.assign(fill.style, {
+    width: "0%",
+    height: "100%",
+    transition: "width 50ms linear"
+  });
 
-    outer.appendChild(fill);
+  fill.style.setProperty(
+    "background-color",
+    "#ffcc00",
+    "important"
+  );
 
-    outer._fill = fill;
+  outer.appendChild(fill);
 
-    return outer;
-  }
+  outer._fill = fill;
+
+  return outer;
+}
 
 
   function createEnergyText(id, className) {
