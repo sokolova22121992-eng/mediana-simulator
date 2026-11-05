@@ -282,125 +282,126 @@ export function createChargeControl({
   // РЕДАГУВАННЯ ТА ПЕРЕМІЩЕННЯ
   // --------------------------------------------------
 
-  function makeEditable(id) {
-    const element = elements[id];
+ function makeEditable(id) {
+  const element = elements[id];
 
-    const handle = document.createElement("div");
+  // Окремий маркер зміни розміру поверх рамки
+  const handle = document.createElement("div");
 
-    Object.assign(handle.style, {
-      position: "absolute",
-      right: "0px",
-bottom: "0px",
-width: "12px",
-height: "12px",
-      background: "#00a8ff",
-      border: "1px solid white",
-      boxSizing: "border-box",
-      cursor: "nwse-resize",
-      display: "none",
-      zIndex: "30"
-    });
+  Object.assign(handle.style, {
+    position: "absolute",
+    width: "16px",
+    height: "16px",
+    background: "#00a8ff",
+    border: "2px solid white",
+    boxSizing: "border-box",
+    cursor: "nwse-resize",
+    touchAction: "none",
+    pointerEvents: "auto",
+    transform: "translate(-50%, -50%)",
+    display: "none",
+    zIndex: "100"
+  });
 
-    element.appendChild(handle);
+  // Маркер розташований поза елементом,
+  // тому overflow: hidden його не обрізає.
+  deviceWrap.appendChild(handle);
 
-   right: "0px",
-bottom: "0px",
-width: "16px",
-height: "16px",
-background: "#00a8ff",
-border: "2px solid white",
-boxSizing: "border-box",
-cursor: "nwse-resize",
-touchAction: "none",
-pointerEvents: "auto",
+  let pointerId = null;
+  let resizing = false;
+  let startX = 0;
+  let startY = 0;
+  let original = null;
 
-function pointerDown(event, resize) {
-      if (editingElement !== id) return;
+  function updateHandlePosition() {
+    const p = positions[id];
 
-      event.preventDefault();
-      event.stopPropagation();
-
-      pointerId = event.pointerId;
-      resizing = resize;
-
-      startX = event.clientX;
-      startY = event.clientY;
-
-      original = { ...positions[id] };
-
-      element.setPointerCapture(event.pointerId);
-    }
-
-
-    function pointerMove(event) {
-      if (pointerId !== event.pointerId || !original) {
-        return;
-      }
-
-      const rect = deviceWrap.getBoundingClientRect();
-
-      const dx =
-        (event.clientX - startX) / rect.width * 100;
-
-      const dy =
-        (event.clientY - startY) / rect.height * 100;
-
-      const p = positions[id];
-
-      if (resizing) {
-        p.width = Math.max(
-          0.5,
-          Math.min(100 - p.x, original.width + dx)
-        );
-
-        p.height = Math.max(
-          0.5,
-          Math.min(100 - p.y, original.height + dy)
-        );
-
-      } else {
-        p.x = Math.max(
-          0,
-          Math.min(100 - p.width, original.x + dx)
-        );
-
-        p.y = Math.max(
-          0,
-          Math.min(100 - p.height, original.y + dy)
-        );
-      }
-
-      applyPosition(id);
-      updateCoordinatePanel(id);
-      savePositions();
-    }
-
-
-    function pointerUp(event) {
-      if (pointerId !== event.pointerId) return;
-
-      pointerId = null;
-      original = null;
-
-      savePositions();
-    }
-
-
-    element.addEventListener("pointerdown", event => {
-      if (event.target === handle) return;
-      pointerDown(event, false);
-    });
-
-    handle.addEventListener("pointerdown", event => {
-      pointerDown(event, true);
-    });
-
-    element.addEventListener("pointermove", pointerMove);
-    element.addEventListener("pointerup", pointerUp);
-    element.addEventListener("pointercancel", pointerUp);
-
-    element._editorHandle = handle;
+    handle.style.left = (p.x + p.width) + "%";
+    handle.style.top = (p.y + p.height) + "%";
   }
+
+  function pointerDown(event, resize) {
+    if (editingElement !== id) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    pointerId = event.pointerId;
+    resizing = resize;
+
+    startX = event.clientX;
+    startY = event.clientY;
+
+    original = { ...positions[id] };
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function pointerMove(event) {
+    if (pointerId !== event.pointerId || !original) return;
+
+    const rect = deviceWrap.getBoundingClientRect();
+
+    const dx = (event.clientX - startX) / rect.width * 100;
+    const dy = (event.clientY - startY) / rect.height * 100;
+
+    const p = positions[id];
+
+    if (resizing) {
+      p.width = Math.max(
+        0.5,
+        Math.min(100 - p.x, original.width + dx)
+      );
+
+      p.height = Math.max(
+        0.5,
+        Math.min(100 - p.y, original.height + dy)
+      );
+    } else {
+      p.x = Math.max(
+        0,
+        Math.min(100 - p.width, original.x + dx)
+      );
+
+      p.y = Math.max(
+        0,
+        Math.min(100 - p.height, original.y + dy)
+      );
+    }
+
+    applyPosition(id);
+    updateHandlePosition();
+    updateCoordinatePanel(id);
+    savePositions();
+  }
+
+  function pointerUp(event) {
+    if (pointerId !== event.pointerId) return;
+
+    pointerId = null;
+    original = null;
+
+    savePositions();
+  }
+
+  element.addEventListener("pointerdown", event => {
+    pointerDown(event, false);
+  });
+
+  handle.addEventListener("pointerdown", event => {
+    pointerDown(event, true);
+  });
+
+  [element, handle].forEach(target => {
+    target.addEventListener("pointermove", pointerMove);
+    target.addEventListener("pointerup", pointerUp);
+    target.addEventListener("pointercancel", pointerUp);
+  });
+
+  element._editorHandle = handle;
+
+  updateHandlePosition();
+}
 
 
   function setEditing(id = null) {
