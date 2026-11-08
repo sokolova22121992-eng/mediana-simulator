@@ -419,18 +419,23 @@ export function createEnergyControl({
     updateDisplay();
   }
 
-  function close() {
-    enabled = false;
-    pointerActive = false;
-    activePointerId = null;
-    accumulatedAngle = 0;
+ function close() {
+  enabled = false;
+  pointerActive = false;
+  activePointerId = null;
+  accumulatedAngle = 0;
 
-    energyLayer.style.display = "none";
-    energyDisplay.style.display = "none";
+  selectedIndex = ENERGY_STEPS.indexOf(INITIAL_ENERGY);
+  confirmed = false;
 
-    screenEditor.setEditing(false);
-    valueEditor.setEditing(false);
-  }
+  updateDisplay();
+
+  energyLayer.style.display = "none";
+  energyDisplay.style.display = "none";
+
+  screenEditor.setEditing(false);
+  valueEditor.setEditing(false);
+}
 
   function pointerDown(event) {
     if (!enabled || pointerActive || confirmed) return;
@@ -566,6 +571,7 @@ export function createEnergyControl({
     open,
     close,
     confirm,
+    isConfirmed: () => confirmed,
     getCurrentValue,
     getCurrentIndex,
     setValue,
