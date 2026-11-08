@@ -333,32 +333,25 @@ export function createShockScreen({
   }
 
   function setEditing(id = null) {
-    editingElement = id;
-
-    Object.keys(NAMES).forEach(key => {
-      const active = key === id;
-      const element = elements[key];
-
-      element.style.outline = active
-        ? "2px dashed #00a8ff"
-        : "none";
-
-      element.style.cursor = active ? "move" : "default";
-      element.style.pointerEvents = active ? "auto" : "none";
-
-      element._editorHandle.style.display =
-        active ? "block" : "none";
-
-      buttons[key].style.background = active
-        ? "#1677d2"
-        : "";
-    });
-
-    if (id) {
-      updateCoordinates(id);
-    }
+  if (!editorEnabled) {
+    id = null;
   }
 
+  editingElement = id;
+
+  Object.keys(NAMES).forEach(key => {
+    const active = key === id;
+    const element = elements[key];
+
+    element.style.outline = active ? "2px dashed #00a8ff" : "none";
+    element.style.cursor = active ? "move" : "default";
+    element.style.pointerEvents = active ? "auto" : "none";
+    element._editorHandle.style.display = active ? "block" : "none";
+    buttons[key].style.background = active ? "#1677d2" : "";
+  });
+
+  if (id) updateCoordinates(id);
+}
   function show(energy) {
     if (!Number.isFinite(energy) || energy <= 0) return;
 
