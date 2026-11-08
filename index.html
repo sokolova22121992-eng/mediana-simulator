@@ -401,6 +401,7 @@ import {
 import { selectMode, MODES } from "./js/mode-control.js";
 import { createEnergyControl } from "./js/energy-control.js";
 import { createChargeControl } from "./js/charge-control.js";
+  import { createShockScreen } from "./js/shock-screen.js";
 
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
@@ -827,12 +828,23 @@ const energyControl = createEnergyControl({
     }
   }
 });
-  const chargeControl = createChargeControl({
+let shockScreen;
+
+const chargeControl = createChargeControl({
   deviceWrap: wrap,
   coordinatePanel: coordText,
   selectedName: selectedName,
   duration: 5000,
-  image: "mediana-charge.png"
+  image: "mediana-charge.png",
+
+  onComplete: ({ energy }) => {
+    shockScreen.show(energy, chargeControl.getPositions());
+  }
+});
+
+shockScreen = createShockScreen({
+  deviceWrap: wrap,
+  image: "mediana-schock.PNG"
 });
 
 const energyPositionBtn = document.createElement("button");
