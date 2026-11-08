@@ -397,7 +397,7 @@ export function createShockScreen({
     createEditor();
 
     if (editorPanel) {
-      editorPanel.style.display = "flex";
+      editorPanel.style.display = editorEnabled ? "flex" : "none";
     }
 
     syncTimer();
