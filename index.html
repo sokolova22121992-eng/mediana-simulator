@@ -985,6 +985,10 @@ function renderDeviceState(state) {
 subscribe(state => {
   renderDeviceState(state);
   syncRuntimeTimer(state);
+
+  if (!state.power) {
+    energyControl.close();
+  }
 });
 
 renderDeviceState(getState());
