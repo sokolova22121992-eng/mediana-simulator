@@ -458,15 +458,17 @@ export function createShockScreen({
   hide,
   destroy,
 
-  setEditorEnabled(enabled) {
-    if (!enabled) {
-      setEditing(null);
-    }
+setEditorEnabled(enabled) {
+  editorEnabled = Boolean(enabled);
 
-    if (editorPanel) {
-      editorPanel.style.display =
-        enabled && visible ? "flex" : "none";
-    }
+  if (!editorEnabled) {
+    setEditing(null);
   }
+
+  if (editorPanel) {
+    editorPanel.style.display =
+      editorEnabled && visible ? "flex" : "none";
+  }
+}
 };
 }
