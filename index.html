@@ -745,6 +745,10 @@ zoneSelect.addEventListener("change", () => {
 
 editToggle.addEventListener("click", () => {
   setEditing(!editing);
+
+  if (shockScreen) {
+    shockScreen.setEditorEnabled(editing);
+  }
 });
 
 document.getElementById("resetZones").addEventListener("click", () => {
