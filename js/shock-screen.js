@@ -46,6 +46,7 @@ export function createShockScreen({
   let positions = loadPositions();
   let elements = {};
   let editingElement = null;
+  let editorEnabled = false;
   let visible = false;
 
   const originalTimerStyle = {
