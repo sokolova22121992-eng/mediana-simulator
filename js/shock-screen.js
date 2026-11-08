@@ -459,9 +459,20 @@ export function createShockScreen({
     unsubscribe();
   }
 
-  return {
-    show,
-    hide,
-    destroy
-  };
+ return {
+  show,
+  hide,
+  destroy,
+
+  setEditorEnabled(enabled) {
+    if (!enabled) {
+      setEditing(null);
+    }
+
+    if (editorPanel) {
+      editorPanel.style.display =
+        enabled && visible ? "flex" : "none";
+    }
+  }
+};
 }
