@@ -90,6 +90,7 @@ export function setPower(enabled) {
     return updateState({
       power: false,
       mode: "off",
+      energy: null,
       charging: false,
       charged: false,
       message: "Пристрій вимкнений"
