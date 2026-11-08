@@ -696,7 +696,11 @@ zones.forEach(zone => {
         "Для заряджання увімкніть ручний режим.";
       return;
     }
-
+if (!energyControl.isConfirmed()) {
+  testResult.textContent =
+    "Спочатку виберіть та підтвердіть енергію.";
+  return;
+}
     try {
       chargeControl.start();
       testResult.textContent = "Триває заряджання...";
