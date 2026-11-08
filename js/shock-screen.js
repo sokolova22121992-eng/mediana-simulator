@@ -352,7 +352,12 @@ export function createShockScreen({
 
   if (id) updateCoordinates(id);
 }
-  function show(energy) {
+  function show(energy, screenPosition = {
+  x: 48,
+  y: 22,
+  width: 12,
+  height: 10
+}) {
     if (!Number.isFinite(energy) || energy <= 0) return;
 
     hide();
@@ -378,13 +383,6 @@ export function createShockScreen({
       applyPosition(id);
       makeEditable(id);
     });
-
-    const screenPosition = {
-      x: 48,
-      y: 22,
-      width: 12,
-      height: 10
-    };
 
     Object.assign(elements.screen.style, {
       left: screenPosition.x + "%",
