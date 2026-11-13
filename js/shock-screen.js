@@ -364,10 +364,11 @@ export function createShockScreen({
     hide();
 
     visible = true;
-
+runtimeDisplay.style.visibility = "hidden";
     createScreen();
 
     const timer = createEnergyElement("timer");
+    timer.style.color = "#ffffff";
     timer.textContent = runtimeDisplay.textContent;
 
     // Таймер продовжує працювати у своєму початковому елементі.
@@ -417,6 +418,7 @@ export function createShockScreen({
 
   function hide() {
     visible = false;
+    runtimeDisplay.style.visibility = originalTimerStyle.visibility;
 
     if (timerSync) {
       clearInterval(timerSync);
