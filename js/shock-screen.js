@@ -49,12 +49,13 @@ export function createShockScreen({
   let editorEnabled = false;
   let visible = false;
 
-  const originalTimerStyle = {
-    left: runtimeDisplay.style.left,
-    top: runtimeDisplay.style.top,
-    width: runtimeDisplay.style.width,
-    height: runtimeDisplay.style.height
-  };
+ const originalTimerStyle = {
+  left: runtimeDisplay.style.left,
+  top: runtimeDisplay.style.top,
+  width: runtimeDisplay.style.width,
+  height: runtimeDisplay.style.height,
+  visibility: runtimeDisplay.style.visibility
+};
 
   function loadPositions() {
     try {
