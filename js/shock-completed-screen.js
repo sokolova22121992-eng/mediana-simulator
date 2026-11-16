@@ -1,0 +1,828 @@
+/**
+ * MEDIANA D500 Simulator
+ * Екран після виконання розряду.
+ *
+ * Файл: js/shock-completed-screen.js
+ * Фонове зображення: ./shock-completed-screen.png
+ *
+ * ВАЖЛИВО:
+ * - show(energy) викликати ОДИН раз на кожен фактично виконаний розряд.
+ * - energy — підтверджена енергія розряду в Дж.
+ * - лічильник збільшується лише при show().
+ * - hide() лише приховує екран; OFF скидає клінічні показники.
+ * - координати/розміри зберігаються окремо від стану пристрою.
+ */
+
+import { subscribe } from "./device-state.js";
+
+const STORAGE_KEY = "mediana-shock-completed-layout-v1";
+const BACKGROUND_IMAGE = "./shock-completed-screen.png";
+
+const DEFAULT_LAYOUT = {
+  screen: {
+    x: 48,
+    y: 22,
+    width: 12,
+    height: 10
+  },
+
+  smallEnergy: {
+    x: 45.5,
+    y: 7.0,
+    width: 7.0,
+    height: 2.8
+  },
+
+  shockCount: {
+    x: 38.0,
+    y: 68.0,
+    width: 8.0,
+    height: 5.0
+  },
+
+  consumedEnergy: {
+    x: 48.0,
+    y: 76.0,
+    width: 13.0,
+    height: 6.0
+  }
+};
+
+const LABELS = {
+  screen: "Фоновий екран — після розряду",
+  smallEnergy: "Малі джоулі біля DEFIB",
+  shockCount: "Лічильник розрядів",
+  consumedEnergy: "Витрачена енергія — великі Дж"
+};
+
+const EDITABLE_IDS = Object.keys(LABELS);
+
+function cloneLayout(layout) {
+  return Object.fromEntries(
+    Object.entries(layout).map(([key, value]) => [
+      key,
+      { ...value }
+    ])
+  );
+}
+
+export function createShockCompletedScreen({
+  deviceWrap,
+  coordinatePanel = null,
+  selectedName = null,
+  workspace = document.querySelector(".workspace"),
+  image = BACKGROUND_IMAGE
+} = {}) {
+  if (!deviceWrap) {
+    throw new Error(
+      "createShockCompletedScreen: не передано deviceWrap."
+    );
+  }
+
+  if (
+    deviceWrap.dataset.shockCompletedScreen === "initialized"
+  ) {
+    throw new Error(
+      "Екран після розряду вже ініціалізований для цього deviceWrap."
+    );
+  }
+
+  deviceWrap.dataset.shockCompletedScreen = "initialized";
+
+  let layout = loadLayout();
+  let editorEnabled = false;
+  let editingId = null;
+  let visible = false;
+  let shockCount = 0;
+  let selectedEnergy = null;
+
+  const elements = {};
+  const handles = {};
+  const editorButtons = {};
+  const cleanup = [];
+
+  const originalPosition = deviceWrap.style.position;
+
+  if (getComputedStyle(deviceWrap).position === "static") {
+    deviceWrap.style.position = "relative";
+  }
+
+  function loadLayout() {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem(STORAGE_KEY)
+      );
+
+      const result = {};
+
+      for (const id of EDITABLE_IDS) {
+        const candidate = saved?.[id] || {};
+
+        result[id] = {
+          ...DEFAULT_LAYOUT[id]
+        };
+
+        for (const key of [
+          "x",
+          "y",
+          "width",
+          "height"
+        ]) {
+          const value = Number(candidate[key]);
+
+          if (Number.isFinite(value)) {
+            result[id][key] = value;
+          }
+        }
+
+        result[id].x = clamp(result[id].x, 0, 100);
+        result[id].y = clamp(result[id].y, 0, 100);
+
+        result[id].width = clamp(
+          result[id].width,
+          0.5,
+          100 - result[id].x
+        );
+
+        result[id].height = clamp(
+          result[id].height,
+          0.5,
+          100 - result[id].y
+        );
+      }
+
+      return result;
+
+    } catch {
+      return cloneLayout(DEFAULT_LAYOUT);
+    }
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function saveLayout() {
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(layout)
+      );
+
+    } catch (error) {
+      console.error(
+        "Не вдалося зберегти координати екрана після розряду:",
+        error
+      );
+    }
+  }
+
+  function applyPosition(id) {
+    const element = elements[id];
+    const p = layout[id];
+
+    if (!element || !p) return;
+
+    element.style.left = p.x + "%";
+    element.style.top = p.y + "%";
+    element.style.width = p.width + "%";
+    element.style.height = p.height + "%";
+
+    if (id !== "screen") {
+      const rect = deviceWrap.getBoundingClientRect();
+
+      const fontSize = Math.max(
+        4,
+        Math.min(
+          (rect.height * p.height / 100) * 0.78,
+          (rect.width * p.width / 100) / 4.5
+        )
+      );
+
+      element.style.setProperty(
+        "font-size",
+        fontSize + "px",
+        "important"
+      );
+    }
+
+    updateHandle(id);
+  }
+
+  function updateCoordinates(id) {
+    const p = layout[id];
+
+    if (!p) return;
+
+    if (selectedName) {
+      selectedName.textContent = LABELS[id];
+    }
+
+    if (coordinatePanel) {
+      coordinatePanel.textContent =
+        `X: ${p.x.toFixed(4)}% · ` +
+        `Y: ${p.y.toFixed(4)}% · ` +
+        `W: ${p.width.toFixed(4)}% · ` +
+        `H: ${p.height.toFixed(4)}%`;
+    }
+  }
+
+  function createBaseElement(id) {
+    const element = document.createElement("div");
+
+    element.dataset.shockCompletedElement = id;
+
+    element.style.position = "absolute";
+    element.style.boxSizing = "border-box";
+    element.style.zIndex =
+      id === "screen" ? "15" : "16";
+
+    element.style.pointerEvents = "none";
+    element.style.userSelect = "none";
+    element.style.touchAction = "none";
+    element.style.overflow = "hidden";
+
+    deviceWrap.appendChild(element);
+
+    elements[id] = element;
+
+    return element;
+  }
+
+  function createScreenBackground() {
+    const screen = createBaseElement("screen");
+
+    screen.style.background = "#000";
+    screen.style.pointerEvents = "none";
+
+    const img = document.createElement("img");
+
+    img.src = image;
+    img.alt = "Екран MEDIANA D500 — шок виконано";
+    img.draggable = false;
+
+    Object.assign(img.style, {
+      display: "block",
+      width: "100%",
+      height: "100%",
+      objectFit: "fill",
+      pointerEvents: "none"
+    });
+
+    screen.appendChild(img);
+  }
+
+  function createValueElement(
+    id,
+    color = "#FFC34D"
+  ) {
+    const element = createBaseElement(id);
+
+    Object.assign(element.style, {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color,
+      fontFamily: "Arial, sans-serif",
+      fontWeight: "bold",
+      textAlign: "center",
+      whiteSpace: "nowrap",
+      textShadow: "0 1px 3px #000",
+      lineHeight: "1",
+      pointerEvents: "none"
+    });
+
+    return element;
+  }
+
+  function createHandle(id) {
+    const handle = document.createElement("div");
+
+    Object.assign(handle.style, {
+      position: "absolute",
+      width: "16px",
+      height: "16px",
+      background: "#ffcc00",
+      border: "2px solid #fff",
+      boxSizing: "border-box",
+      cursor: "nwse-resize",
+      touchAction: "none",
+      transform: "translate(-50%, -50%)",
+      display: "none",
+      zIndex: "2147483647"
+    });
+
+    handle.dataset.editorHandle = id;
+
+    deviceWrap.appendChild(handle);
+
+    handles[id] = handle;
+
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let original = null;
+    let resizing = false;
+
+    function onPointerDown(event, resize) {
+      if (!editorEnabled || editingId !== id) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      pointerId = event.pointerId;
+      resizing = resize;
+
+      startX = event.clientX;
+      startY = event.clientY;
+
+      original = {
+        ...layout[id]
+      };
+
+      try {
+        event.currentTarget.setPointerCapture(
+          event.pointerId
+        );
+      } catch {
+        // Pointer capture is optional.
+      }
+    }
+
+    function onPointerMove(event) {
+      if (
+        pointerId !== event.pointerId ||
+        !original
+      ) {
+        return;
+      }
+
+      const rect = deviceWrap.getBoundingClientRect();
+
+      if (!rect.width || !rect.height) return;
+
+      const dx =
+        (event.clientX - startX) / rect.width * 100;
+
+      const dy =
+        (event.clientY - startY) / rect.height * 100;
+
+      const p = layout[id];
+
+      if (resizing) {
+        p.width = clamp(
+          original.width + dx,
+          0.5,
+          100 - p.x
+        );
+
+        p.height = clamp(
+          original.height + dy,
+          0.5,
+          100 - p.y
+        );
+
+      } else {
+        p.x = clamp(
+          original.x + dx,
+          0,
+          100 - p.width
+        );
+
+        p.y = clamp(
+          original.y + dy,
+          0,
+          100 - p.height
+        );
+      }
+
+      applyPosition(id);
+      updateCoordinates(id);
+      saveLayout();
+    }
+
+    function onPointerUp(event) {
+      if (pointerId !== event.pointerId) return;
+
+      pointerId = null;
+      original = null;
+
+      saveLayout();
+    }
+
+    const element = elements[id];
+
+    const onElementDown = event =>
+      onPointerDown(event, false);
+
+    const onHandleDown = event =>
+      onPointerDown(event, true);
+
+    element.addEventListener(
+      "pointerdown",
+      onElementDown
+    );
+
+    handle.addEventListener(
+      "pointerdown",
+      onHandleDown
+    );
+
+    element.addEventListener(
+      "pointermove",
+      onPointerMove
+    );
+
+    handle.addEventListener(
+      "pointermove",
+      onPointerMove
+    );
+
+    element.addEventListener(
+      "pointerup",
+      onPointerUp
+    );
+
+    handle.addEventListener(
+      "pointerup",
+      onPointerUp
+    );
+
+    element.addEventListener(
+      "pointercancel",
+      onPointerUp
+    );
+
+    handle.addEventListener(
+      "pointercancel",
+      onPointerUp
+    );
+
+    cleanup.push(() => {
+      element.removeEventListener(
+        "pointerdown",
+        onElementDown
+      );
+
+      handle.removeEventListener(
+        "pointerdown",
+        onHandleDown
+      );
+
+      element.removeEventListener(
+        "pointermove",
+        onPointerMove
+      );
+
+      handle.removeEventListener(
+        "pointermove",
+        onPointerMove
+      );
+
+      element.removeEventListener(
+        "pointerup",
+        onPointerUp
+      );
+
+      handle.removeEventListener(
+        "pointerup",
+        onPointerUp
+      );
+
+      element.removeEventListener(
+        "pointercancel",
+        onPointerUp
+      );
+
+      handle.removeEventListener(
+        "pointercancel",
+        onPointerUp
+      );
+    });
+
+    updateHandle(id);
+  }
+
+  function updateHandle(id) {
+    const handle = handles[id];
+    const p = layout[id];
+
+    if (!handle || !p) return;
+
+    handle.style.left =
+      (p.x + p.width) + "%";
+
+    handle.style.top =
+      (p.y + p.height) + "%";
+  }
+
+  function createEditorPanel() {
+    if (!workspace) return;
+
+    const panel = document.createElement("div");
+
+    panel.className =
+      "shock-completed-editor-controls";
+
+    Object.assign(panel.style, {
+      display: "none",
+      flexWrap: "wrap",
+      gap: "6px",
+      marginTop: "8px",
+      width: "100%"
+    });
+
+    for (const id of EDITABLE_IDS) {
+      const button = document.createElement("button");
+
+      button.type = "button";
+      button.className = "tool-button";
+
+      button.textContent =
+        "Редагувати: " + LABELS[id];
+
+      const onClick = () => {
+        setEditing(
+          editingId === id ? null : id
+        );
+      };
+
+      button.addEventListener(
+        "click",
+        onClick
+      );
+
+      cleanup.push(() =>
+        button.removeEventListener(
+          "click",
+          onClick
+        )
+      );
+
+      panel.appendChild(button);
+
+      editorButtons[id] = button;
+    }
+
+    const resetButton =
+      document.createElement("button");
+
+    resetButton.type = "button";
+    resetButton.className = "tool-button";
+
+    resetButton.textContent =
+      "Скинути координати цього екрана";
+
+    const onReset = () => {
+      layout = cloneLayout(DEFAULT_LAYOUT);
+
+      saveLayout();
+
+      for (const id of EDITABLE_IDS) {
+        applyPosition(id);
+      }
+
+      if (editingId) {
+        updateCoordinates(editingId);
+      }
+    };
+
+    resetButton.addEventListener(
+      "click",
+      onReset
+    );
+
+    cleanup.push(() =>
+      resetButton.removeEventListener(
+        "click",
+        onReset
+      )
+    );
+
+    panel.appendChild(resetButton);
+
+    workspace.appendChild(panel);
+
+    elements.editorPanel = panel;
+  }
+
+  function setEditing(id = null) {
+    if (!editorEnabled) {
+      id = null;
+    }
+
+    editingId = id;
+
+    for (const key of EDITABLE_IDS) {
+      const active = key === id;
+      const element = elements[key];
+
+      if (!element) continue;
+
+      element.style.outline =
+        active ? "2px dashed #00a8ff" : "none";
+
+      element.style.cursor =
+        active ? "move" : "default";
+
+      element.style.pointerEvents =
+        active ? "auto" : "none";
+
+      if (handles[key]) {
+        handles[key].style.display =
+          active ? "block" : "none";
+      }
+
+      if (editorButtons[key]) {
+        editorButtons[key].style.background =
+          active ? "#1677d2" : "";
+      }
+    }
+
+    if (id) {
+      updateCoordinates(id);
+    }
+  }
+
+  function renderValues() {
+    if (elements.smallEnergy) {
+      elements.smallEnergy.textContent =
+        selectedEnergy == null
+          ? ""
+          : `${selectedEnergy} J`;
+    }
+
+    if (elements.shockCount) {
+      elements.shockCount.textContent =
+        String(shockCount);
+    }
+
+    if (elements.consumedEnergy) {
+      const consumed =
+        selectedEnergy == null
+          ? null
+          : Math.max(0, selectedEnergy - 4);
+
+      elements.consumedEnergy.textContent =
+        consumed == null
+          ? ""
+          : `${consumed} J`;
+    }
+  }
+
+  function build() {
+    createScreenBackground();
+
+    createValueElement(
+      "smallEnergy",
+      "#FFFFFF"
+    );
+
+    createValueElement(
+      "shockCount",
+      "#FFC34D"
+    );
+
+    createValueElement(
+      "consumedEnergy",
+      "#FFC34D"
+    );
+
+    for (const id of EDITABLE_IDS) {
+      applyPosition(id);
+      createHandle(id);
+    }
+
+    createEditorPanel();
+
+    setEditing(null);
+    renderValues();
+
+    elements.screen.style.display = "none";
+
+    for (const id of [
+      "smallEnergy",
+      "shockCount",
+      "consumedEnergy"
+    ]) {
+      elements[id].style.display = "none";
+    }
+  }
+
+  function show(energy) {
+    if (
+      !Number.isFinite(energy) ||
+      energy <= 0
+    ) {
+      throw new RangeError(
+        "Для показу розряду потрібна коректна підтверджена енергія."
+      );
+    }
+
+    // Викликати один раз лише після фактично виконаного розряду.
+    selectedEnergy = energy;
+    shockCount += 1;
+    visible = true;
+
+    for (const id of EDITABLE_IDS) {
+      elements[id].style.display = "block";
+    }
+
+    renderValues();
+
+    if (elements.editorPanel) {
+      elements.editorPanel.style.display =
+        editorEnabled ? "flex" : "none";
+    }
+  }
+
+  function hide() {
+    visible = false;
+
+    for (const id of EDITABLE_IDS) {
+      if (elements[id]) {
+        elements[id].style.display = "none";
+      }
+    }
+
+    if (elements.editorPanel) {
+      elements.editorPanel.style.display = "none";
+    }
+
+    setEditing(null);
+  }
+
+  function resetClinicalValues() {
+    shockCount = 0;
+    selectedEnergy = null;
+
+    renderValues();
+    hide();
+  }
+
+  function setEditorEnabled(enabled) {
+    editorEnabled = Boolean(enabled);
+
+    if (!editorEnabled) {
+      setEditing(null);
+    }
+
+    if (elements.editorPanel) {
+      elements.editorPanel.style.display =
+        editorEnabled && visible
+          ? "flex"
+          : "none";
+    }
+  }
+
+  build();
+
+  const unsubscribe = subscribe(deviceState => {
+    if (!deviceState.power) {
+      resetClinicalValues();
+    }
+  });
+
+  function destroy() {
+    hide();
+
+    unsubscribe();
+
+    cleanup.splice(0).forEach(dispose => {
+      dispose();
+    });
+
+    for (const element of Object.values(elements)) {
+      if (element?.remove) {
+        element.remove();
+      }
+    }
+
+    for (const handle of Object.values(handles)) {
+      handle.remove();
+    }
+
+    if (originalPosition) {
+      deviceWrap.style.position = originalPosition;
+    } else {
+      deviceWrap.style.removeProperty("position");
+    }
+
+    delete deviceWrap.dataset.shockCompletedScreen;
+  }
+
+  return {
+    show,
+    hide,
+    destroy,
+    setEditorEnabled,
+
+    getShockCount: () => shockCount,
+
+    getSelectedEnergy: () => selectedEnergy,
+
+    getLayout: () => cloneLayout(layout)
+  };
+}
