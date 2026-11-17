@@ -416,6 +416,44 @@ const testResult = document.getElementById("testResult");
 
 let runtimeStartedAt = null;
 let runtimeInterval = null;
+  // Окремі координати таймера після виконання SHOCK
+const SHOCK_TIMER_STORAGE_KEY = "mediana-shock-timer-position";
+
+const DEFAULT_SHOCK_TIMER_POSITION = {
+  x: 49,
+  y: 19
+};
+
+let completedScreenActive = false;
+
+function loadShockTimerPosition() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(SHOCK_TIMER_STORAGE_KEY)
+    );
+
+    return {
+      ...DEFAULT_SHOCK_TIMER_POSITION,
+      ...(saved || {})
+    };
+  } catch {
+    return { ...DEFAULT_SHOCK_TIMER_POSITION };
+  }
+}
+
+let shockTimerPosition = loadShockTimerPosition();
+
+function applyShockTimerPosition() {
+  runtimeDisplay.style.left = shockTimerPosition.x + "%";
+  runtimeDisplay.style.top = shockTimerPosition.y + "%";
+}
+
+function restoreNormalTimerPosition() {
+  completedScreenActive = false;
+
+  runtimeDisplay.style.left = "";
+  runtimeDisplay.style.top = "";
+}
 
 function updateRuntimeTimer() {
   if (runtimeStartedAt === null) return;
@@ -735,11 +773,15 @@ if (!energyControl.isConfirmed()) {
       return;
     }
 
-    shockScreen.hide();
-    setCharged(false);
-    completedScreen.show(dischargedEnergy);
+ shockScreen.hide();
+setCharged(false);
+completedScreen.show(dischargedEnergy);
 
-    setMessage("Розряд виконано");
+// Переміщуємо таймер на окремі координати після SHOCK
+completedScreenActive = true;
+applyShockTimerPosition();
+
+setMessage("Розряд виконано");
     testResult.textContent = "Розряд виконано.";
 
     return;
@@ -1014,10 +1056,22 @@ runtimeDisplay.addEventListener("pointermove", (event) => {
   const x = event.clientX - rect.left - timerDragOffsetX;
   const y = event.clientY - rect.top - timerDragOffsetY;
 
-  runtimeDisplay.style.left = (x / rect.width * 100) + "%";
-  runtimeDisplay.style.top = (y / rect.height * 100) + "%";
+runtimeDisplay.style.left = (x / rect.width * 100) + "%";
+runtimeDisplay.style.top = (y / rect.height * 100) + "%";
 
-    updateTimerCoordinates();
+if (completedScreenActive) {
+  shockTimerPosition = {
+    x: x / rect.width * 100,
+    y: y / rect.height * 100
+  };
+
+  localStorage.setItem(
+    SHOCK_TIMER_STORAGE_KEY,
+    JSON.stringify(shockTimerPosition)
+  );
+}
+
+updateTimerCoordinates();
 });
 
 runtimeDisplay.addEventListener("pointerup", () => {
@@ -1041,6 +1095,7 @@ subscribe(state => {
 
   if (!state.power) {
     energyControl.close();
+    restoreNormalTimerPosition();
   }
 });
 
