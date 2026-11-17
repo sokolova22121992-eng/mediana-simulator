@@ -402,6 +402,7 @@ import { selectMode, MODES } from "./js/mode-control.js";
 import { createEnergyControl } from "./js/energy-control.js";
 import { createChargeControl } from "./js/charge-control.js";
   import { createShockScreen } from "./js/shock-screen.js";
+  import { createShockCompletedScreen } from "./js/shock-completed-screen.js";
 
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
@@ -712,7 +713,7 @@ if (!energyControl.isConfirmed()) {
     return;
   }
 
-  // Розряд
+    // Розряд
   if (zoneId === "shock") {
     if (!state.power || state.mode !== MODES.MANUAL) {
       testResult.textContent =
@@ -726,7 +727,18 @@ if (!energyControl.isConfirmed()) {
       return;
     }
 
+    const dischargedEnergy = state.energy;
+
+    if (!Number.isFinite(dischargedEnergy) || dischargedEnergy <= 0) {
+      testResult.textContent =
+        "Не визначено підтверджену енергію. Повторіть вибір енергії та заряджання.";
+      return;
+    }
+
+    shockScreen.hide();
     setCharged(false);
+    completedScreen.show(dischargedEnergy);
+
     setMessage("Розряд виконано");
     testResult.textContent = "Розряд виконано.";
 
@@ -739,6 +751,7 @@ if (!energyControl.isConfirmed()) {
     ". Логіку цієї дії підключимо окремим етапом.";
 });
   });
+
 zoneSelect.addEventListener("change", () => {
   selectZone(zoneSelect.value);
 });
@@ -749,6 +762,8 @@ editToggle.addEventListener("click", () => {
   if (shockScreen) {
     shockScreen.setEditorEnabled(editing);
   }
+
+  completedScreen.setEditorEnabled(editing);
 });
 
 document.getElementById("resetZones").addEventListener("click", () => {
@@ -772,8 +787,17 @@ document.getElementById("exportZones").addEventListener("click", () => {
     if (id) positions[id] = readPosition(zone);
   });
 
-  // Додаємо координати екрана енергії
+  // Координати екрана енергії
   positions.energyScreen = energyControl.getPosition();
+
+  // Координати напису джоулів
+  positions.energyValue = energyControl.getValuePosition();
+
+  // Координати екрана завершеного розряду
+  Object.assign(
+    positions,
+    completedScreen.getLayout()
+  );
 
   testResult.textContent = JSON.stringify(positions, null, 2);
 });
@@ -857,6 +881,13 @@ shockScreen = createShockScreen({
   image: "mediana-schock.PNG"
 });
 
+  const completedScreen = createShockCompletedScreen({
+  deviceWrap: wrap,
+  coordinatePanel: coordText,
+  selectedName: selectedName,
+  workspace: document.querySelector(".workspace"),
+  image: "./shock-completed-screen.png"
+});
 const energyPositionBtn = document.createElement("button");
 
 energyPositionBtn.id = "energyPositionBtn";
