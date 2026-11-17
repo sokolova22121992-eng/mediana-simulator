@@ -787,17 +787,12 @@ document.getElementById("exportZones").addEventListener("click", () => {
     if (id) positions[id] = readPosition(zone);
   });
 
-  // Координати екрана енергії
+  // Екран енергії та напис джоулів
   positions.energyScreen = energyControl.getPosition();
-
-  // Координати напису джоулів
   positions.energyValue = energyControl.getValuePosition();
 
-  // Координати екрана завершеного розряду
-  Object.assign(
-    positions,
-    completedScreen.getLayout()
-  );
+  // Елементи екрана після розряду
+  positions.shockCompleted = completedScreen.getLayout();
 
   testResult.textContent = JSON.stringify(positions, null, 2);
 });
@@ -857,6 +852,7 @@ const energyControl = createEnergyControl({
   }
 });
 let shockScreen;
+  let completedScreen;
 
 const chargeControl = createChargeControl({
   deviceWrap: wrap,
@@ -881,7 +877,7 @@ shockScreen = createShockScreen({
   image: "mediana-schock.PNG"
 });
 
-  const completedScreen = createShockCompletedScreen({
+  completedScreen = createShockCompletedScreen({
   deviceWrap: wrap,
   coordinatePanel: coordText,
   selectedName: selectedName,
