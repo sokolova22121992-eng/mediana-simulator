@@ -50,7 +50,8 @@ manualCounter: {
   x: 20,
   y: 19,
   width: 2,
-  height: 2
+  height: 2,
+  fontSize: 24
 }
 };
 
@@ -203,11 +204,14 @@ export function createShockCompletedScreen({
 
   let fontSize;
 
-  if (id === "manualCounter") {
-    // Розмір цифри незалежний від рамки редактора
+   if (id === "manualCounter") {
+    // Розмір цифри залежить від розміру рамки
     fontSize = Math.max(
-      12,
-      Math.min(rect.width * 0.035, rect.height * 0.07)
+      4,
+      Math.min(
+        rect.height * p.height / 100 * 0.75,
+        rect.width * p.width / 100 * 1.5
+      )
     );
   } else {
     fontSize = Math.max(
@@ -711,9 +715,7 @@ export function createShockCompletedScreen({
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
-    shockCount === 0
-      ? "- - -"
-      : String(shockCount);
+    shockCount > 0 ? String(shockCount) : "";
 }
 
     if (elements.consumedEnergy) {
@@ -861,9 +863,11 @@ if (elements.manualCounter) {
       }
 
       setEditing(null);
-    } else if (!visible && elements.manualCounter) {
-      elements.manualCounter.style.display = "flex";
-    }
+    } else if (!visible && elements.manualCounter && shockCount > 0) {
+  elements.manualCounter.style.display = "flex";
+} else if (elements.manualCounter) {
+  elements.manualCounter.style.display = "none";
+}
 
     renderValues();
     syncEditorPanel();
