@@ -79,7 +79,8 @@ export function createShockCompletedScreen({
   coordinatePanel = null,
   selectedName = null,
   workspace = document.querySelector(".workspace"),
-  image = BACKGROUND_IMAGE
+  image = BACKGROUND_IMAGE,
+  onReturn = null
 } = {}) {
   if (!deviceWrap) {
     throw new Error(
@@ -778,8 +779,12 @@ export function createShockCompletedScreen({
     renderValues();
     syncEditorPanel();
 
-    completionTimeout = setTimeout(() => {
+        completionTimeout = setTimeout(() => {
       hide(true);
+
+      if (typeof onReturn === "function") {
+        onReturn();
+      }
     }, 2000);
   }
 
