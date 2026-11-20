@@ -712,7 +712,7 @@ export function createShockCompletedScreen({
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
     shockCount === 0
-      ? "---"
+      ? "- - -"
       : String(shockCount);
 }
 
@@ -732,15 +732,47 @@ if (elements.manualCounter) {
   function build() {
     createScreenBackground();
 
-    createValueElement(
-      "smallEnergy",
-      "#FFFFFF"
-    );
+   const manualCounter = createValueElement(
+  "manualCounter",
+  "#FFFFFF"
+);
 
-    createValueElement(
-      "shockCount",
-      "#FFC34D"
-    );
+const counterValue = document.createElement("span");
+
+Object.assign(counterValue.style, {
+  display: "inline-block",
+  background: "#000000",
+  padding: "2px 5px",
+  borderRadius: "2px",
+  lineHeight: "1",
+  whiteSpace: "nowrap",
+  fontWeight: "900",
+  color: "#FFFFFF"
+});
+
+manualCounter.appendChild(counterValue);
+manualCounter._value = counterValue;
+
+    const manualCounter = createValueElement(
+  "manualCounter",
+  "#FFFFFF"
+);
+
+const counterValue = document.createElement("span");
+
+Object.assign(counterValue.style, {
+  display: "inline-block",
+  background: "#000000",
+  padding: "2px 5px",
+  borderRadius: "2px",
+  lineHeight: "1",
+  whiteSpace: "nowrap",
+  fontWeight: "900",
+  color: "#FFFFFF"
+});
+
+manualCounter.appendChild(counterValue);
+manualCounter._value = counterValue;
 
     createValueElement(
       "consumedEnergy",
