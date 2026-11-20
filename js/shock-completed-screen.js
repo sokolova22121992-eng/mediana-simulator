@@ -46,13 +46,12 @@ const DEFAULT_LAYOUT = {
     width: 13.0,
     height: 6.0
   },
-
-  manualCounter: {
-    x: 20,
-    y: 19,
-    width: 5,
-    height: 5
-  }
+manualCounter: {
+  x: 20,
+  y: 19,
+  width: 2,
+  height: 2
+}
 };
 
 const LABELS = {
