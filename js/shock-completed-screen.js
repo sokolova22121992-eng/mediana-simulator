@@ -45,6 +45,13 @@ const DEFAULT_LAYOUT = {
     y: 76.0,
     width: 13.0,
     height: 6.0
+  },
+
+  manualCounter: {
+    x: 20,
+    y: 19,
+    width: 5,
+    height: 5
   }
 };
 
@@ -52,7 +59,8 @@ const LABELS = {
   screen: "Фоновий екран — після розряду",
   smallEnergy: "Малі джоулі біля DEFIB",
   shockCount: "Лічильник розрядів",
-  consumedEnergy: "Витрачена енергія — великі Дж"
+  consumedEnergy: "Витрачена енергія — великі Дж",
+  manualCounter: "Лічильник розрядів — ручний режим"
 };
 
 const EDITABLE_IDS = Object.keys(LABELS);
@@ -95,6 +103,8 @@ export function createShockCompletedScreen({
   let visible = false;
   let shockCount = 0;
   let selectedEnergy = null;
+  let manualMode = false;
+  let completionTimeout = null;
 
   const elements = {};
   const handles = {};
@@ -607,7 +617,27 @@ export function createShockCompletedScreen({
 
     elements.editorPanel = panel;
   }
+  function syncEditorPanel() {
+    if (!elements.editorPanel) return;
 
+    for (const id of EDITABLE_IDS) {
+      const button = editorButtons[id];
+
+      if (!button) continue;
+
+      const available = visible
+        ? id !== "manualCounter"
+        : id === "manualCounter" && manualMode;
+
+      button.style.display =
+        available ? "" : "none";
+    }
+
+    elements.editorPanel.style.display =
+      editorEnabled && (visible || manualMode)
+        ? "flex"
+        : "none";
+  }
   function setEditing(id = null) {
     if (!editorEnabled) {
       id = null;
@@ -659,6 +689,13 @@ export function createShockCompletedScreen({
         String(shockCount);
     }
 
+    if (elements.manualCounter) {
+      elements.manualCounter.textContent =
+        shockCount === 0
+          ? "---"
+          : String(shockCount);
+    }
+
     if (elements.consumedEnergy) {
       const consumed =
         selectedEnergy == null
@@ -689,6 +726,10 @@ export function createShockCompletedScreen({
       "consumedEnergy",
       "#FFC34D"
     );
+        createValueElement(
+      "manualCounter",
+      "#FFFFFF"
+    );
 
     for (const id of EDITABLE_IDS) {
       applyPosition(id);
@@ -702,16 +743,12 @@ export function createShockCompletedScreen({
 
     elements.screen.style.display = "none";
 
-    for (const id of [
-      "smallEnergy",
-      "shockCount",
-      "consumedEnergy"
-    ]) {
+        for (const id of EDITABLE_IDS) {
       elements[id].style.display = "none";
     }
   }
 
-  function show(energy) {
+   function show(energy) {
     if (
       !Number.isFinite(energy) ||
       energy <= 0
@@ -721,37 +758,51 @@ export function createShockCompletedScreen({
       );
     }
 
-    // Викликати один раз лише після фактично виконаного розряду.
+    if (completionTimeout !== null) {
+      clearTimeout(completionTimeout);
+      completionTimeout = null;
+    }
+
     selectedEnergy = energy;
     shockCount += 1;
     visible = true;
 
     for (const id of EDITABLE_IDS) {
-      elements[id].style.display = "block";
-    }
-
-    renderValues();
-
-    if (elements.editorPanel) {
-      elements.editorPanel.style.display =
-        editorEnabled ? "flex" : "none";
-    }
-  }
-
-  function hide() {
-    visible = false;
-
-    for (const id of EDITABLE_IDS) {
-      if (elements[id]) {
+      if (id === "manualCounter") {
         elements[id].style.display = "none";
+      } else {
+        elements[id].style.display = "flex";
       }
     }
 
-    if (elements.editorPanel) {
-      elements.editorPanel.style.display = "none";
+    renderValues();
+    syncEditorPanel();
+
+    completionTimeout = setTimeout(() => {
+      hide(true);
+    }, 2000);
+  }
+
+   function hide(keepCounter = false) {
+    if (completionTimeout !== null) {
+      clearTimeout(completionTimeout);
+      completionTimeout = null;
+    }
+
+    visible = false;
+
+    for (const id of EDITABLE_IDS) {
+      if (!elements[id]) continue;
+
+      elements[id].style.display = "none";
+    }
+
+    if (keepCounter && manualMode) {
+      elements.manualCounter.style.display = "flex";
     }
 
     setEditing(null);
+    syncEditorPanel();
   }
 
   function resetClinicalValues() {
@@ -759,22 +810,33 @@ export function createShockCompletedScreen({
     selectedEnergy = null;
 
     renderValues();
-    hide();
+    hide(false);
+  }
+    function setManualMode(enabled) {
+    manualMode = Boolean(enabled);
+
+    if (!manualMode) {
+      if (!visible && elements.manualCounter) {
+        elements.manualCounter.style.display = "none";
+      }
+
+      setEditing(null);
+    } else if (!visible && elements.manualCounter) {
+      elements.manualCounter.style.display = "flex";
+    }
+
+    renderValues();
+    syncEditorPanel();
   }
 
-  function setEditorEnabled(enabled) {
+   function setEditorEnabled(enabled) {
     editorEnabled = Boolean(enabled);
 
     if (!editorEnabled) {
       setEditing(null);
     }
 
-    if (elements.editorPanel) {
-      elements.editorPanel.style.display =
-        editorEnabled && visible
-          ? "flex"
-          : "none";
-    }
+    syncEditorPanel();
   }
 
   build();
@@ -818,6 +880,7 @@ export function createShockCompletedScreen({
     hide,
     destroy,
     setEditorEnabled,
+    setManualMode,
 
     getShockCount: () => shockCount,
 
