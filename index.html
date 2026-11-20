@@ -906,7 +906,9 @@ const chargeControl = createChargeControl({
   duration: 5000,
   image: "mediana-charge.png",
 
- onComplete: ({ energy }) => {
+onComplete: ({ energy }) => {
+  energyControl.close();
+
   shockScreen.show(
     energy,
     chargeControl.getPositions().screen
