@@ -775,6 +775,9 @@ if (!energyControl.isConfirmed()) {
 
  shockScreen.hide();
 setCharged(false);
+
+renderDeviceState(getState());
+
 completedScreen.show(dischargedEnergy);
 
 // Переміщуємо таймер на окремі координати після SHOCK
