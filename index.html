@@ -919,21 +919,19 @@ shockScreen = createShockScreen({
   image: "mediana-schock.PNG"
 });
 
-   completedScreen = createShockCompletedScreen({
-    deviceWrap: wrap,
-    coordinatePanel: coordText,
-    selectedName: selectedName,
-    workspace: document.querySelector(".workspace"),
-    image: "./shock-completed-screen.png",
+  completedScreen = createShockCompletedScreen({
+  deviceWrap: wrap,
+  coordinatePanel: coordText,
+  selectedName: selectedName,
+  workspace: document.querySelector(".workspace"),
+  image: "./shock-completed-screen.png",
 
-    onReturn: () => {
-      shockScreen.hide();
-
-      renderDeviceState(getState());
-
-      restoreNormalTimerPosition();
-    }
-  });
+  onReturn: () => {
+    shockScreen.hide();
+    renderDeviceState(getState());
+    restoreNormalTimerPosition();
+  }
+});
 const energyPositionBtn = document.createElement("button");
 
 energyPositionBtn.id = "energyPositionBtn";
