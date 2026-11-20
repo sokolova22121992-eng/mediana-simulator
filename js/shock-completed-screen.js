@@ -198,23 +198,33 @@ export function createShockCompletedScreen({
     element.style.width = p.width + "%";
     element.style.height = p.height + "%";
 
-    if (id !== "screen") {
-      const rect = deviceWrap.getBoundingClientRect();
+  if (id !== "screen") {
+  const rect = deviceWrap.getBoundingClientRect();
 
-      const fontSize = Math.max(
-        4,
-        Math.min(
-          (rect.height * p.height / 100) * 0.78,
-          (rect.width * p.width / 100) / 4.5
-        )
-      );
+  let fontSize;
 
-      element.style.setProperty(
-        "font-size",
-        fontSize + "px",
-        "important"
-      );
-    }
+  if (id === "manualCounter") {
+    // Розмір цифри незалежний від рамки редактора
+    fontSize = Math.max(
+      12,
+      Math.min(rect.width * 0.035, rect.height * 0.07)
+    );
+  } else {
+    fontSize = Math.max(
+      4,
+      Math.min(
+        (rect.height * p.height / 100) * 0.78,
+        (rect.width * p.width / 100) / 4.5
+      )
+    );
+  }
+
+  element.style.setProperty(
+    "font-size",
+    fontSize + "px",
+    "important"
+  );
+}
 
     updateHandle(id);
   }
@@ -287,6 +297,10 @@ export function createShockCompletedScreen({
   color = "#FFC34D"
 ) {
   const element = createBaseElement(id);
+    if (id === "manualCounter") {
+  element.style.overflow = "visible";
+  element.style.zIndex = "100";
+}
 
   Object.assign(element.style, {
     display: "flex",
@@ -695,14 +709,11 @@ export function createShockCompletedScreen({
         String(shockCount);
     }
 
-   if (elements.manualCounter) {
-  elements.manualCounter.textContent =
+if (elements.manualCounter) {
+  elements.manualCounter._value.textContent =
     shockCount === 0
       ? "---"
       : String(shockCount);
-
-  elements.manualCounter.style.background = "#000000";
-  elements.manualCounter.style.padding = "2px 5px";
 }
 
     if (elements.consumedEnergy) {
