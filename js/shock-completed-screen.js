@@ -284,27 +284,33 @@ export function createShockCompletedScreen({
   }
 
   function createValueElement(
-    id,
-    color = "#FFC34D"
-  ) {
-    const element = createBaseElement(id);
+  id,
+  color = "#FFC34D"
+) {
+  const element = createBaseElement(id);
 
-    Object.assign(element.style, {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color,
-      fontFamily: "Arial, sans-serif",
-      fontWeight: "bold",
-      textAlign: "center",
-      whiteSpace: "nowrap",
-      textShadow: "0 1px 3px #000",
-      lineHeight: "1",
-      pointerEvents: "none"
-    });
+  Object.assign(element.style, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color,
+    fontFamily: "Arial, sans-serif",
+    fontWeight: "bold",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    lineHeight: "1",
+    pointerEvents: "none",
+    background: "transparent",
+    overflow: "visible"
+  });
 
-    return element;
+  if (id === "manualCounter") {
+    element.style.zIndex = "100";
+    element.style.textShadow = "none";
   }
+
+  return element;
+}
 
   function createHandle(id) {
     const handle = document.createElement("div");
@@ -690,12 +696,15 @@ export function createShockCompletedScreen({
         String(shockCount);
     }
 
-    if (elements.manualCounter) {
-      elements.manualCounter.textContent =
-        shockCount === 0
-          ? "---"
-          : String(shockCount);
-    }
+   if (elements.manualCounter) {
+  elements.manualCounter.textContent =
+    shockCount === 0
+      ? "---"
+      : String(shockCount);
+
+  elements.manualCounter.style.background = "#000000";
+  elements.manualCounter.style.padding = "2px 5px";
+}
 
     if (elements.consumedEnergy) {
       const consumed =
