@@ -730,76 +730,60 @@ if (elements.manualCounter) {
   }
 
   function build() {
-    createScreenBackground();
+  createScreenBackground();
 
-   const manualCounter = createValueElement(
-  "manualCounter",
-  "#FFFFFF"
-);
+  createValueElement(
+    "smallEnergy",
+    "#FFFFFF"
+  );
 
-const counterValue = document.createElement("span");
+  createValueElement(
+    "shockCount",
+    "#FFC34D"
+  );
 
-Object.assign(counterValue.style, {
-  display: "inline-block",
-  background: "#000000",
-  padding: "2px 5px",
-  borderRadius: "2px",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-  fontWeight: "900",
-  color: "#FFFFFF"
-});
+  createValueElement(
+    "consumedEnergy",
+    "#FFC34D"
+  );
 
-manualCounter.appendChild(counterValue);
-manualCounter._value = counterValue;
+  const manualCounter = createValueElement(
+    "manualCounter",
+    "#FFFFFF"
+  );
 
-    const manualCounter = createValueElement(
-  "manualCounter",
-  "#FFFFFF"
-);
+  const counterValue = document.createElement("span");
 
-const counterValue = document.createElement("span");
+  Object.assign(counterValue.style, {
+    display: "inline-block",
+    background: "#000000",
+    padding: "2px 5px",
+    borderRadius: "2px",
+    lineHeight: "1",
+    whiteSpace: "nowrap",
+    fontWeight: "900",
+    color: "#FFFFFF"
+  });
 
-Object.assign(counterValue.style, {
-  display: "inline-block",
-  background: "#000000",
-  padding: "2px 5px",
-  borderRadius: "2px",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-  fontWeight: "900",
-  color: "#FFFFFF"
-});
+  manualCounter.appendChild(counterValue);
+  manualCounter._value = counterValue;
 
-manualCounter.appendChild(counterValue);
-manualCounter._value = counterValue;
-
-    createValueElement(
-      "consumedEnergy",
-      "#FFC34D"
-    );
-        createValueElement(
-      "manualCounter",
-      "#FFFFFF"
-    );
-
-    for (const id of EDITABLE_IDS) {
-      applyPosition(id);
-      createHandle(id);
-    }
-
-    createEditorPanel();
-
-    setEditing(null);
-    renderValues();
-
-    elements.screen.style.display = "none";
-
-        for (const id of EDITABLE_IDS) {
-      elements[id].style.display = "none";
-    }
+  for (const id of EDITABLE_IDS) {
+    applyPosition(id);
+    createHandle(id);
   }
 
+  createEditorPanel();
+
+  setEditing(null);
+  renderValues();
+
+  elements.screen.style.display = "none";
+
+  for (const id of EDITABLE_IDS) {
+    elements[id].style.display = "none";
+  }
+}
    function show(energy) {
     if (
       !Number.isFinite(energy) ||
