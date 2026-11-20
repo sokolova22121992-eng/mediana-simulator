@@ -634,23 +634,27 @@ Object.assign(editorPanel.style, {
   // ЗАВЕРШЕННЯ ЗАРЯДЖАННЯ
   // --------------------------------------------------
 
-  function finish() {
-    if (!isCharging()) return;
+ function finish() {
+  if (!isCharging()) return;
 
-    clearInterval(timer);
-    timer = null;
+  clearInterval(timer);
+  timer = null;
 
-    setCharged(true);
-    setMessage("Заряджання завершено");
+  setCharged(true);
+  setMessage("Заряджання завершено");
 
-    elements.progress._fill.style.width = "100%";
-    elements.mainEnergy.textContent =
-      `${targetEnergy} J`;
+  elements.progress._fill.style.width = "100%";
+  elements.mainEnergy.textContent =
+    `${targetEnergy} J`;
 
-    onComplete({
-      energy: targetEnergy
-    });
-  }
+  // Приховуємо екран заряджання
+  hideScreen();
+
+  // Передаємо керування наступному екрану
+  onComplete({
+    energy: targetEnergy
+  });
+}
 
 
   // --------------------------------------------------
