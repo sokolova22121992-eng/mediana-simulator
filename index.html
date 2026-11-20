@@ -804,29 +804,16 @@ zoneSelect.addEventListener("change", () => {
 editToggle.addEventListener("click", () => {
   const nextState = !editing;
 
+  // Основне редагування зон
   setEditing(nextState);
 
+  // Редактори додаткових екранів
   if (shockScreen) {
     shockScreen.setEditorEnabled(nextState);
   }
 
   if (completedScreen) {
     completedScreen.setEditorEnabled(nextState);
-  }
-
-  if (!nextState) {
-    energyPositionEditing = false;
-    energyValuePositionEditing = false;
-    timerEditing = false;
-
-    energyControl.setEditing(false);
-    energyControl.setValueEditing(false);
-
-    runtimeDisplay.classList.remove("editing");
-
-    editTimerBtn.textContent = "Налаштувати таймер";
-    energyPositionBtn.textContent = "Налаштувати екран енергії";
-    energyValuePositionBtn.textContent = "Налаштувати напис J";
   }
 });
 
