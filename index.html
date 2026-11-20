@@ -802,13 +802,32 @@ zoneSelect.addEventListener("change", () => {
 });
 
 editToggle.addEventListener("click", () => {
-  setEditing(!editing);
+  const nextState = !editing;
+
+  setEditing(nextState);
 
   if (shockScreen) {
-    shockScreen.setEditorEnabled(editing);
+    shockScreen.setEditorEnabled(nextState);
   }
 
-  completedScreen.setEditorEnabled(editing);
+  if (completedScreen) {
+    completedScreen.setEditorEnabled(nextState);
+  }
+
+  if (!nextState) {
+    energyPositionEditing = false;
+    energyValuePositionEditing = false;
+    timerEditing = false;
+
+    energyControl.setEditing(false);
+    energyControl.setValueEditing(false);
+
+    runtimeDisplay.classList.remove("editing");
+
+    editTimerBtn.textContent = "Налаштувати таймер";
+    energyPositionBtn.textContent = "Налаштувати екран енергії";
+    energyValuePositionBtn.textContent = "Налаштувати напис J";
+  }
 });
 
 document.getElementById("resetZones").addEventListener("click", () => {
