@@ -1093,14 +1093,22 @@ subscribe(state => {
   renderDeviceState(state);
   syncRuntimeTimer(state);
 
+  completedScreen.setManualMode(
+    state.power && state.mode === MODES.MANUAL
+  );
+
   if (!state.power) {
     energyControl.close();
-    restoreNormalTimerPosition();
   }
 });
 
 renderDeviceState(getState());
 syncRuntimeTimer(getState());
+
+completedScreen.setManualMode(
+  getState().power &&
+  getState().mode === MODES.MANUAL
+);
 
 const modeZone = document.querySelector('[data-id="mode"]');
 
