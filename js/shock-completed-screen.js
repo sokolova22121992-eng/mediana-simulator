@@ -1003,12 +1003,13 @@ for (const id of EDITABLE_IDS) {
   }
 
   function resetClinicalValues() {
-    shockCount = 0;
-    selectedEnergy = null;
+  shockCount = 0;
+  selectedEnergy = null;
+  medianaChargeActive = false;
 
-    renderValues();
-    hide(false);
-  }
+  renderValues();
+  hide(false);
+}
     function setManualMode(enabled) {
     manualMode = Boolean(enabled);
 
