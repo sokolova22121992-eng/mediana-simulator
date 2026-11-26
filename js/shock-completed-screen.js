@@ -875,9 +875,10 @@ completedCounter._value = completedCounterValue;
     renderValues();
     syncEditorPanel();
 
-      // Автоматичне зникнення екрана тимчасово вимкнено.
-// Екран залишається видимим до ручного приховування.
-completionTimeout = null;
+      // Автоматичне приховування екрана через 2 секунди.
+completionTimeout = setTimeout(() => {
+  hide();
+}, 2000);
   }
 
    function hide(keepCounter = false) {
