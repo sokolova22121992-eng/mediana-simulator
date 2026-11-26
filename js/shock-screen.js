@@ -23,13 +23,20 @@ const DEFAULT_POSITIONS = {
     y: 21,
     width: 5,
     height: 2
+  },
+  shockCount: {
+    x: 4,
+    y: 4,
+    width: 5,
+    height: 4
   }
 };
 
 const NAMES = {
   timer: "Таймер — екран готовності",
   mainEnergy: "Великі джоулі — екран готовності",
-  smallEnergy: "Малі джоулі — екран готовності"
+  smallEnergy: "Малі джоулі — екран готовності",
+  shockCount: "Лічильник розрядів — MEDIANA SHOCK"
 };
 
 export function createShockScreen({
@@ -37,6 +44,7 @@ export function createShockScreen({
   runtimeDisplay,
   coordinatePanel,
   selectedName,
+  getShockCount = () => 0,
   image = "mediana-schock.PNG"
 } = {}) {
   if (!deviceWrap || !runtimeDisplay) {
@@ -49,13 +57,13 @@ export function createShockScreen({
   let editorEnabled = false;
   let visible = false;
 
- const originalTimerStyle = {
-  left: runtimeDisplay.style.left,
-  top: runtimeDisplay.style.top,
-  width: runtimeDisplay.style.width,
-  height: runtimeDisplay.style.height,
-  visibility: runtimeDisplay.style.visibility
-};
+  const originalTimerStyle = {
+    left: runtimeDisplay.style.left,
+    top: runtimeDisplay.style.top,
+    width: runtimeDisplay.style.width,
+    height: runtimeDisplay.style.height,
+    visibility: runtimeDisplay.style.visibility
+  };
 
   function loadPositions() {
     try {
@@ -89,6 +97,8 @@ export function createShockScreen({
     const element = elements[id];
     const p = positions[id];
 
+    if (!element || !p) return;
+
     element.style.left = p.x + "%";
     element.style.top = p.y + "%";
     element.style.width = p.width + "%";
@@ -115,6 +125,8 @@ export function createShockScreen({
 
   function updateCoordinates(id) {
     const p = positions[id];
+
+    if (!p) return;
 
     if (selectedName) {
       selectedName.textContent = NAMES[id];
@@ -334,45 +346,64 @@ export function createShockScreen({
   }
 
   function setEditing(id = null) {
-  if (!editorEnabled) {
-    id = null;
+    if (!editorEnabled) {
+      id = null;
+    }
+
+    editingElement = id;
+
+    Object.keys(NAMES).forEach(key => {
+      const active = key === id;
+      const element = elements[key];
+
+      if (!element) return;
+
+      element.style.outline = active
+        ? "2px dashed #00a8ff"
+        : "none";
+
+      element.style.cursor = active ? "move" : "default";
+      element.style.pointerEvents = active ? "auto" : "none";
+
+      element._editorHandle.style.display = active
+        ? "block"
+        : "none";
+
+      buttons[key].style.background = active ? "#1677d2" : "";
+    });
+
+    if (id) updateCoordinates(id);
   }
 
-  editingElement = id;
+  function updateShockCount() {
+    if (!elements.shockCount) return;
 
-  Object.keys(NAMES).forEach(key => {
-    const active = key === id;
-    const element = elements[key];
+    const count = Number(getShockCount());
 
-    element.style.outline = active ? "2px dashed #00a8ff" : "none";
-    element.style.cursor = active ? "move" : "default";
-    element.style.pointerEvents = active ? "auto" : "none";
-    element._editorHandle.style.display = active ? "block" : "none";
-    buttons[key].style.background = active ? "#1677d2" : "";
-  });
+    elements.shockCount.textContent = String(
+      Number.isFinite(count) ? count : 0
+    );
+  }
 
-  if (id) updateCoordinates(id);
-}
   function show(energy, screenPosition = {
-  x: 48,
-  y: 22,
-  width: 12,
-  height: 10
-}) {
+    x: 48,
+    y: 22,
+    width: 12,
+    height: 10
+  }) {
     if (!Number.isFinite(energy) || energy <= 0) return;
 
     hide();
 
     visible = true;
-runtimeDisplay.style.visibility = "hidden";
+    runtimeDisplay.style.visibility = "hidden";
+
     createScreen();
 
     const timer = createEnergyElement("timer");
     timer.style.color = "#ffffff";
     timer.textContent = runtimeDisplay.textContent;
 
-    // Таймер продовжує працювати у своєму початковому елементі.
-    // На екрані готовності відображається його актуальне значення.
     elements.timerMirror = timer;
 
     const mainEnergy = createEnergyElement("mainEnergy");
@@ -380,6 +411,10 @@ runtimeDisplay.style.visibility = "hidden";
 
     const smallEnergy = createEnergyElement("smallEnergy");
     smallEnergy.textContent = `${energy} J`;
+
+    const shockCount = createEnergyElement("shockCount");
+    shockCount.textContent = "0";
+    updateShockCount();
 
     Object.keys(NAMES).forEach(id => {
       applyPosition(id);
@@ -454,22 +489,23 @@ runtimeDisplay.style.visibility = "hidden";
     unsubscribe();
   }
 
- return {
-  show,
-  hide,
-  destroy,
+  return {
+    show,
+    hide,
+    destroy,
+    updateShockCount,
 
-setEditorEnabled(enabled) {
-  editorEnabled = Boolean(enabled);
+    setEditorEnabled(enabled) {
+      editorEnabled = Boolean(enabled);
 
-  if (!editorEnabled) {
-    setEditing(null);
-  }
+      if (!editorEnabled) {
+        setEditing(null);
+      }
 
-  if (editorPanel) {
-    editorPanel.style.display =
-      editorEnabled && visible ? "flex" : "none";
-  }
-}
-};
+      if (editorPanel) {
+        editorPanel.style.display =
+          editorEnabled && visible ? "flex" : "none";
+      }
+    }
+  };
 }
