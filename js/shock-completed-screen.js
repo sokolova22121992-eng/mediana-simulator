@@ -218,6 +218,14 @@ let completionTimeout = null;
         );
       }
 
+      result.medianaChargeCounter = {
+        ...result.medianaChargeCounter,
+        x: DEFAULT_LAYOUT.medianaChargeCounter.x,
+        y: DEFAULT_LAYOUT.medianaChargeCounter.y,
+        width: DEFAULT_LAYOUT.medianaChargeCounter.width,
+        height: DEFAULT_LAYOUT.medianaChargeCounter.height
+      };
+
       return result;
 
     } catch {
