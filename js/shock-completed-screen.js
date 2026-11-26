@@ -1078,6 +1078,7 @@ for (const id of EDITABLE_IDS) {
 function setMedianaChargeActive(active) {
   medianaChargeActive = Boolean(active);
   syncCounterVisibility();
+  syncEditorPanel();
 }
  return {
   show,
