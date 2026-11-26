@@ -875,15 +875,16 @@ completedCounter._value = completedCounterValue;
     renderValues();
     syncEditorPanel();
 
-    completionTimeout = setTimeout(() => {
+ completionTimeout = setTimeout(() => {
   hide(true);
 
   if (typeof onReturn === "function") {
     onReturn();
   }
 }, 2000);
+}
 
-   function hide(keepCounter = false) {
+function hide(keepCounter = false) {
     if (completionTimeout !== null) {
       clearTimeout(completionTimeout);
       completionTimeout = null;
