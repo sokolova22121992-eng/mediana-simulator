@@ -816,13 +816,9 @@ if (elements.manualCounter) {
     renderValues();
     syncEditorPanel();
 
-        completionTimeout = setTimeout(() => {
-      hide(true);
-
-      if (typeof onReturn === "function") {
-        onReturn();
-      }
-    }, 2000);
+      // Автоматичне зникнення екрана тимчасово вимкнено.
+// Екран залишається видимим до ручного приховування.
+completionTimeout = null;
   }
 
    function hide(keepCounter = false) {
