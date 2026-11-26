@@ -875,11 +875,13 @@ completedCounter._value = completedCounterValue;
     renderValues();
     syncEditorPanel();
 
-      // Автоматичне приховування екрана через 2 секунди.
-completionTimeout = setTimeout(() => {
-  hide();
-}, 2000);
+    completionTimeout = setTimeout(() => {
+  hide(true);
+
+  if (typeof onReturn === "function") {
+    onReturn();
   }
+}, 2000);
 
    function hide(keepCounter = false) {
     if (completionTimeout !== null) {
