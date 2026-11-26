@@ -932,7 +932,8 @@ shockScreen = createShockScreen({
   runtimeDisplay: runtimeDisplay,
   coordinatePanel: coordText,
   selectedName: selectedName,
-  image: "mediana-schock.PNG"
+  image: "mediana-schock.PNG",
+  getShockCount: () => completedScreen?.getShockCount() ?? 0
 });
 
   completedScreen = createShockCompletedScreen({
