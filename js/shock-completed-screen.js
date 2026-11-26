@@ -790,13 +790,22 @@ if (elements.manualCounter) {
   "#FFFFFF"
 );
 
-Object.assign(completedCounter.style, {
+completedCounter.style.zIndex = "1000";
+
+const completedCounterValue = document.createElement("span");
+
+Object.assign(completedCounterValue.style, {
+  display: "inline-block",
   background: "#000000",
   color: "#FFFFFF",
   fontWeight: "900",
-  zIndex: "1000",
-  overflow: "visible"
+  padding: "2px 5px",
+  lineHeight: "1",
+  whiteSpace: "nowrap"
 });
+
+completedCounter.appendChild(completedCounterValue);
+completedCounter._value = completedCounterValue;
 
   createValueElement(
     "consumedEnergy",
