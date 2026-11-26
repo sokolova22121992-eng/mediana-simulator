@@ -715,7 +715,9 @@ export function createShockCompletedScreen({
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
-    shockCount > 0 ? String(shockCount) : "";
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
 }
 
     if (elements.consumedEnergy) {
