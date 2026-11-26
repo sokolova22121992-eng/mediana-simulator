@@ -54,10 +54,10 @@ manualCounter: {
   fontSize: 24
 },
 energyCounter: {
-  x: 20.8913,
-  y: 22.4306,
-  width: 3.2852,
-  height: 3.3224
+  x: 21.8940,
+  y: 21.6879,
+  width: 0.9456,
+  height: 4.6593
 },
 
 chargeCounter: {
