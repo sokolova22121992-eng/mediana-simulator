@@ -891,12 +891,13 @@ function hide(keepCounter = false) {
     }
 
     visible = false;
+editorEnabled = false;
 
-    for (const id of EDITABLE_IDS) {
-      if (!elements[id]) continue;
+for (const id of EDITABLE_IDS) {
+  if (!elements[id]) continue;
 
-      elements[id].style.display = "none";
-    }
+  elements[id].style.display = "none";
+}
 
     if (keepCounter && manualMode) {
       elements.manualCounter.style.display = "flex";
