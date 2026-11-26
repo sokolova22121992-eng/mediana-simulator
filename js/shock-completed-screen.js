@@ -52,6 +52,13 @@ manualCounter: {
   width: 2,
   height: 2,
   fontSize: 24
+},
+
+completedCounter: {
+  x: 21.4483,
+  y: 23.1733,
+  width: 2.9510,
+  height: 3.0253
 }
 };
 
@@ -61,6 +68,7 @@ const LABELS = {
   shockCount: "Лічильник розрядів",
   consumedEnergy: "Витрачена енергія — великі Дж",
   manualCounter: "Лічильник розрядів — ручний режим"
+  completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО"
 };
 
 const EDITABLE_IDS = Object.keys(LABELS);
