@@ -746,8 +746,8 @@ if (id === "manualCounter" && element._value) {
       elements.shockCount.textContent =
         String(shockCount);
     }
-    if (elements.completedCounter) {
-  elements.completedCounter.textContent =
+    if (elements.completedCounter?._value) {
+  elements.completedCounter._value.textContent =
     shockCount > 0
       ? String(shockCount).padStart(3, "0")
       : "";
