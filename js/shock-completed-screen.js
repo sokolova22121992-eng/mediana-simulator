@@ -746,6 +746,12 @@ if (id === "manualCounter" && element._value) {
       elements.shockCount.textContent =
         String(shockCount);
     }
+    if (elements.completedCounter) {
+  elements.completedCounter.textContent =
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
+}
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
@@ -779,6 +785,18 @@ if (elements.manualCounter) {
     "shockCount",
     "#FFC34D"
   );
+    const completedCounter = createValueElement(
+  "completedCounter",
+  "#FFFFFF"
+);
+
+Object.assign(completedCounter.style, {
+  background: "#000000",
+  color: "#FFFFFF",
+  fontWeight: "900",
+  zIndex: "1000",
+  overflow: "visible"
+});
 
   createValueElement(
     "consumedEnergy",
