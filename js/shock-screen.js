@@ -28,11 +28,11 @@ const DEFAULT_POSITIONS = {
 
   // Координати відносно самого зображення mediana-schock.PNG.
   shockCount: {
-    x: 6.2,
-    y: 6.5,
-    width: 7,
-    height: 5
-  }
+  x: 20.4456,
+  y: 20.7966,
+  width: 0.7228,
+  height: 4.2137
+}
 };
 
 const NAMES = {
