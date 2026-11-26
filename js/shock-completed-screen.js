@@ -53,7 +53,19 @@ manualCounter: {
   height: 2,
   fontSize: 24
 },
+energyCounter: {
+  x: 20.8913,
+  y: 22.4306,
+  width: 3.2852,
+  height: 3.3224
+},
 
+chargeCounter: {
+  x: 20.5570,
+  y: 21.5393,
+  width: 0.6114,
+  height: 3.6195
+},
 completedCounter: {
   x: 21.4483,
   y: 23.1733,
@@ -67,12 +79,19 @@ const LABELS = {
   smallEnergy: "Малі джоулі біля DEFIB",
   shockCount: "Лічильник розрядів",
   consumedEnergy: "Витрачена енергія — великі Дж",
-  manualCounter: "Лічильник розрядів — ручний режим",
-  completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО"
+   manualCounter: "Лічильник розрядів — ручний режим",
+  completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО",
+  energyCounter: "Лічильник розрядів — вибір енергії",
+  chargeCounter: "Лічильник розрядів — заряджання"
 };
 
 const EDITABLE_IDS = Object.keys(LABELS);
-
+const COUNTER_IDS = [
+  "manualCounter",
+  "energyCounter",
+  "chargeCounter",
+  "completedCounter"
+];
 function cloneLayout(layout) {
   return Object.fromEntries(
     Object.entries(layout).map(([key, value]) => [
@@ -113,13 +132,34 @@ export function createShockCompletedScreen({
   let shockCount = 0;
   let selectedEnergy = null;
   let manualMode = false;
-  let completionTimeout = null;
+let counterScreen = "manualCounter";
+let completionTimeout = null;
 
   const elements = {};
   const handles = {};
   const editorButtons = {};
   const cleanup = [];
+  function syncCounterVisibility() {
+    for (const id of COUNTER_IDS) {
+      const element = elements[id];
 
+      if (!element) continue;
+
+      const isActiveCounter = visible
+        ? id === "completedCounter"
+        : manualMode &&
+          id === counterScreen &&
+          shockCount > 0;
+
+      const isBeingEdited =
+        editorEnabled && editingId === id;
+
+      element.style.display =
+        isActiveCounter || isBeingEdited
+          ? "flex"
+          : "none";
+    }
+  }
   const originalPosition = deviceWrap.style.position;
 
   if (getComputedStyle(deviceWrap).position === "static") {
@@ -752,6 +792,19 @@ if (id === "manualCounter" && element._value) {
       ? String(shockCount).padStart(3, "0")
       : "";
 }
+    if (elements.energyCounter?._value) {
+  elements.energyCounter._value.textContent =
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
+}
+
+if (elements.chargeCounter?._value) {
+  elements.chargeCounter._value.textContent =
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
+}
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
@@ -806,7 +859,28 @@ Object.assign(completedCounterValue.style, {
 
 completedCounter.appendChild(completedCounterValue);
 completedCounter._value = completedCounterValue;
+  // Лічильники для екранів вибору енергії та заряджання
+  for (const id of ["energyCounter", "chargeCounter"]) {
+    const counter = createValueElement(id, "#FFFFFF");
 
+    counter.style.zIndex = "1000";
+
+    const value = document.createElement("span");
+
+    Object.assign(value.style, {
+      display: "inline-block",
+      background: "#000000",
+      color: "#FFFFFF",
+      fontWeight: "900",
+      padding: "2px 5px",
+      lineHeight: "1",
+      whiteSpace: "nowrap"
+    });
+
+    counter.appendChild(value);
+    counter._value = value;
+  }
+    
   createValueElement(
     "consumedEnergy",
     "#FFC34D"
@@ -868,10 +942,13 @@ completedCounter._value = completedCounterValue;
     shockCount += 1;
     visible = true;
 
-    for (const id of EDITABLE_IDS) {
-  elements[id].style.display = "flex";
-}
+      for (const id of EDITABLE_IDS) {
+      if (!COUNTER_IDS.includes(id)) {
+        elements[id].style.display = "flex";
+      }
+    }
 
+    syncCounterVisibility();
     renderValues();
     syncEditorPanel();
 
