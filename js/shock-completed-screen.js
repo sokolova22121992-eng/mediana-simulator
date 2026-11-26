@@ -741,9 +741,9 @@ if (id === "manualCounter" && element._value) {
     }
 
     elements.editorPanel.style.display =
-      editorEnabled && (visible || manualMode)
-        ? "flex"
-        : "none";
+  editorEnabled && (visible || manualMode || medianaChargeActive)
+    ? "flex"
+    : "none";
   }
   function setEditing(id = null) {
     if (!editorEnabled) {
