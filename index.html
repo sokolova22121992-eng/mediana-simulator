@@ -923,13 +923,19 @@ onComplete: ({ energy }) => {
   );
 },
 
-onCancel: () => {
-  completedScreen.setMedianaChargeActive(false);
-}
+  onComplete: ({ energy }) => {
+    completedScreen.setMedianaChargeActive(false);
+    energyControl.close();
 
-onCancel: () => {
-  completedScreen.setMedianaChargeActive(false);
-}
+    shockScreen.show(
+      energy,
+      chargeControl.getPositions().screen
+    );
+  },
+
+  onCancel: () => {
+    completedScreen.setMedianaChargeActive(false);
+  }
 });
 
 shockScreen = createShockScreen({
