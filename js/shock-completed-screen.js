@@ -66,6 +66,12 @@ chargeCounter: {
   width: 0.6114,
   height: 3.6195
 },
+  medianaChargeCounter: {
+  x: 20.4456,
+  y: 21.3908,
+  width: 0.7228,
+  height: 3.3224
+},
 completedCounter: {
   x: 21.4483,
   y: 23.1733,
@@ -82,7 +88,8 @@ const LABELS = {
    manualCounter: "Лічильник розрядів — ручний режим",
   completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО",
   energyCounter: "Лічильник розрядів — вибір енергії",
-  chargeCounter: "Лічильник розрядів — заряджання"
+  chargeCounter: "Лічильник розрядів — заряджання",
+medianaChargeCounter: "Лічильник розрядів — MEDIANA CHARGE"
 };
 
 const EDITABLE_IDS = Object.keys(LABELS);
@@ -90,6 +97,7 @@ const COUNTER_IDS = [
   "manualCounter",
   "energyCounter",
   "chargeCounter",
+  "medianaChargeCounter",
   "completedCounter"
 ];
 function cloneLayout(layout) {
@@ -133,41 +141,38 @@ export function createShockCompletedScreen({
   let selectedEnergy = null;
   let manualMode = false;
 let counterScreen = "manualCounter";
+let medianaChargeActive = false;
 let completionTimeout = null;
 
   const elements = {};
   const handles = {};
   const editorButtons = {};
   const cleanup = [];
-  function syncCounterVisibility() {
-    for (const id of COUNTER_IDS) {
-      const element = elements[id];
+ function syncCounterVisibility() {
+  for (const id of COUNTER_IDS) {
+    const element = elements[id];
+    if (!element) continue;
 
-      if (!element) continue;
+    const isActiveCounter = visible
+      ? id === "completedCounter"
+      : id === "medianaChargeCounter"
+        ? medianaChargeActive
+        : shockCount > 0 &&
+          (
+            id === "manualCounter"
+              ? manualMode && counterScreen === "manualCounter"
+              : id === counterScreen
+          );
 
-      const isActiveCounter = visible
-  ? id === "completedCounter"
-  : shockCount > 0 &&
-    (
-      id === "manualCounter"
-        ? manualMode && counterScreen === "manualCounter"
-        : id === counterScreen
-    );
+    const isBeingEdited =
+      editorEnabled && editingId === id;
 
-      const isBeingEdited =
-        editorEnabled && editingId === id;
-
-      element.style.display =
-        isActiveCounter || isBeingEdited
-          ? "flex"
-          : "none";
-    }
+    element.style.display =
+      isActiveCounter || isBeingEdited
+        ? "flex"
+        : "none";
   }
-  const originalPosition = deviceWrap.style.position;
-
-  if (getComputedStyle(deviceWrap).position === "static") {
-    deviceWrap.style.position = "relative";
-  }
+}
 
   function loadLayout() {
     try {
@@ -808,6 +813,12 @@ if (elements.chargeCounter?._value) {
       ? String(shockCount).padStart(3, "0")
       : "";
 }
+    if (elements.medianaChargeCounter?._value) {
+  elements.medianaChargeCounter._value.textContent =
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
+}
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
@@ -863,7 +874,11 @@ Object.assign(completedCounterValue.style, {
 completedCounter.appendChild(completedCounterValue);
 completedCounter._value = completedCounterValue;
   // Лічильники для екранів вибору енергії та заряджання
-  for (const id of ["energyCounter", "chargeCounter"]) {
+  for (const id of [
+  "energyCounter",
+  "chargeCounter",
+  "medianaChargeCounter"
+]) {
     const counter = createValueElement(id, "#FFFFFF");
 
     counter.style.zIndex = "1000";
