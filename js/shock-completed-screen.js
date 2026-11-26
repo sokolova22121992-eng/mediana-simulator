@@ -649,9 +649,9 @@ export function createShockCompletedScreen({
 
       if (!button) continue;
 
-      const available = visible
-        ? id !== "manualCounter"
-        : id === "manualCounter" && manualMode;
+    const available = visible
+  ? true
+  : id === "manualCounter" && manualMode;
 
       button.style.display =
         available ? "" : "none";
