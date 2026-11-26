@@ -1073,7 +1073,10 @@ for (const id of EDITABLE_IDS) {
 
     delete deviceWrap.dataset.shockCompletedScreen;
   }
-
+function setMedianaChargeActive(active) {
+  medianaChargeActive = Boolean(active);
+  syncCounterVisibility();
+}
   return {
     show,
     hide,
