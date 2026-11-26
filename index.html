@@ -914,12 +914,17 @@ const chargeControl = createChargeControl({
   image: "mediana-charge.png",
 
 onComplete: ({ energy }) => {
+  completedScreen.setMedianaChargeActive(false);
   energyControl.close();
 
   shockScreen.show(
     energy,
     chargeControl.getPositions().screen
   );
+},
+
+onCancel: () => {
+  completedScreen.setMedianaChargeActive(false);
 }
 });
 
