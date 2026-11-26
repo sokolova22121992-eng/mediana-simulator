@@ -224,10 +224,36 @@ export function createShockCompletedScreen({
   }
 
   element.style.setProperty(
+  "font-size",
+  fontSize + "px",
+  "important"
+);
+
+if (id === "manualCounter" && element._value) {
+  element._value.style.setProperty(
     "font-size",
     fontSize + "px",
     "important"
   );
+
+  element._value.style.setProperty(
+    "color",
+    "#FFFFFF",
+    "important"
+  );
+
+  element._value.style.setProperty(
+    "visibility",
+    "visible",
+    "important"
+  );
+
+  element._value.style.setProperty(
+    "opacity",
+    "1",
+    "important"
+  );
+}
 }
 
     updateHandle(id);
