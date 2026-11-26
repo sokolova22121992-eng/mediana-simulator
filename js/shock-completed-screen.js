@@ -68,9 +68,9 @@ chargeCounter: {
 },
   medianaChargeCounter: {
   x: 20.4456,
-  y: 21.3908,
-  width: 0.7228,
-  height: 3.3224
+  y: 20.4995,
+  width: 0.6114,
+  height: 4.9564
 },
 completedCounter: {
   x: 21.4483,
