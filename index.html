@@ -741,12 +741,13 @@ if (!energyControl.isConfirmed()) {
     "Спочатку виберіть та підтвердіть енергію.";
   return;
 }
-    try {
-      chargeControl.start();
-      testResult.textContent = "Триває заряджання...";
-    } catch (error) {
-      testResult.textContent = error.message;
-    }
+   try {
+  chargeControl.start();
+  completedScreen.setMedianaChargeActive(true);
+  testResult.textContent = "Триває заряджання...";
+} catch (error) {
+  testResult.textContent = error.message;
+}
 
     return;
   }
