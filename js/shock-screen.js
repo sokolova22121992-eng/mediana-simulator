@@ -4,6 +4,7 @@ import {
 } from "./device-state.js";
 
 const STORAGE_KEY = "mediana-shock-layout-v1";
+const COUNTER_STORAGE_KEY = "mediana-shock-counter-layout-v1";
 
 const DEFAULT_POSITIONS = {
   timer: {
@@ -24,11 +25,13 @@ const DEFAULT_POSITIONS = {
     width: 5,
     height: 2
   },
+
+  // Координати відносно самого зображення mediana-schock.PNG.
   shockCount: {
-    x: 4,
-    y: 4,
-    width: 5,
-    height: 4
+    x: 6.2,
+    y: 6.5,
+    width: 7,
+    height: 5
   }
 };
 
@@ -76,9 +79,24 @@ export function createShockScreen({
       Object.keys(DEFAULT_POSITIONS).forEach(id => {
         result[id] = {
           ...DEFAULT_POSITIONS[id],
-          ...(saved?.[id] || {})
+          ...(id === "shockCount" ? {} : (saved?.[id] || {}))
         };
       });
+
+      try {
+        const savedCounter = JSON.parse(
+          localStorage.getItem(COUNTER_STORAGE_KEY)
+        );
+
+        if (savedCounter && typeof savedCounter === "object") {
+          result.shockCount = {
+            ...DEFAULT_POSITIONS.shockCount,
+            ...savedCounter
+          };
+        }
+      } catch {
+        // Використовуємо початкові координати лічильника.
+      }
 
       return result;
     } catch {
@@ -90,6 +108,11 @@ export function createShockScreen({
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify(positions)
+    );
+
+    localStorage.setItem(
+      COUNTER_STORAGE_KEY,
+      JSON.stringify(positions.shockCount)
     );
   }
 
@@ -105,13 +128,17 @@ export function createShockScreen({
     element.style.height = p.height + "%";
 
     if (id !== "timer") {
-      const rect = deviceWrap.getBoundingClientRect();
+      // Лічильник вимірюється відносно картинки екрана,
+      // решта елементів — відносно deviceWrap, як і раніше.
+      const referenceRect = id === "shockCount"
+        ? elements.screen.getBoundingClientRect()
+        : deviceWrap.getBoundingClientRect();
 
       const fontSize = Math.max(
         4,
         Math.min(
-          rect.height * p.height / 100 * 0.8,
-          rect.width * p.width / 100 / 5
+          referenceRect.height * p.height / 100 * 0.75,
+          referenceRect.width * p.width / 100 * 1.5
         )
       );
 
@@ -120,6 +147,14 @@ export function createShockScreen({
         fontSize + "px",
         "important"
       );
+
+      if (id === "shockCount" && element._value) {
+        element._value.style.setProperty(
+          "font-size",
+          fontSize + "px",
+          "important"
+        );
+      }
     }
   }
 
@@ -149,17 +184,48 @@ export function createShockScreen({
     element.style.display = "flex";
     element.style.alignItems = "center";
     element.style.justifyContent = "center";
-    element.style.color = "#ffcc00";
+
+    element.style.color =
+      id === "shockCount" ? "#ffffff" : "#ffcc00";
+
     element.style.fontFamily = "Arial, sans-serif";
     element.style.fontWeight = "bold";
     element.style.textAlign = "center";
     element.style.whiteSpace = "nowrap";
-    element.style.textShadow = "0 1px 3px #000";
-    element.style.overflow = "hidden";
+
+    element.style.textShadow =
+      id === "shockCount" ? "none" : "0 1px 3px #000";
+
+    element.style.overflow =
+      id === "shockCount" ? "visible" : "hidden";
+
     element.style.userSelect = "none";
     element.style.zIndex = "2147483646";
 
-    deviceWrap.appendChild(element);
+    if (id === "shockCount") {
+      // Лічильник є дочірнім елементом зображення екрана.
+      elements.screen.appendChild(element);
+
+      // Оформлення повторює completedCounter.
+      const value = document.createElement("span");
+
+      Object.assign(value.style, {
+        display: "inline-block",
+        background: "#000000",
+        color: "#ffffff",
+        fontWeight: "900",
+        padding: "2px 5px",
+        lineHeight: "1",
+        whiteSpace: "nowrap"
+      });
+
+      element.appendChild(value);
+      element._value = value;
+
+    } else {
+      deviceWrap.appendChild(element);
+    }
+
     elements[id] = element;
 
     return element;
@@ -174,6 +240,7 @@ export function createShockScreen({
     screen.style.pointerEvents = "none";
 
     const img = document.createElement("img");
+
     img.src = image;
     img.alt = "Екран готовності до розряду MEDIANA";
     img.draggable = false;
@@ -187,6 +254,7 @@ export function createShockScreen({
 
     screen.appendChild(img);
     deviceWrap.appendChild(screen);
+
     elements.screen = screen;
   }
 
@@ -251,7 +319,12 @@ export function createShockScreen({
       zIndex: "2147483647"
     });
 
-    deviceWrap.appendChild(handle);
+    // Ручка редагування лічильника також належить екрану.
+    const editorParent = id === "shockCount"
+      ? elements.screen
+      : deviceWrap;
+
+    editorParent.appendChild(handle);
 
     let pointerId = null;
     let resizing = false;
@@ -284,7 +357,9 @@ export function createShockScreen({
     function pointerMove(event) {
       if (pointerId !== event.pointerId || !original) return;
 
-      const rect = deviceWrap.getBoundingClientRect();
+      const rect = id === "shockCount"
+        ? elements.screen.getBoundingClientRect()
+        : deviceWrap.getBoundingClientRect();
 
       const dx = (event.clientX - startX) / rect.width * 100;
       const dy = (event.clientY - startY) / rect.height * 100;
@@ -301,6 +376,7 @@ export function createShockScreen({
           0.5,
           Math.min(100 - p.y, original.height + dy)
         );
+
       } else {
         p.x = Math.max(
           0,
@@ -324,6 +400,7 @@ export function createShockScreen({
 
       pointerId = null;
       original = null;
+
       savePositions();
     }
 
@@ -342,6 +419,7 @@ export function createShockScreen({
     });
 
     element._editorHandle = handle;
+
     updateHandle();
   }
 
@@ -380,9 +458,9 @@ export function createShockScreen({
 
     const count = Number(getShockCount());
 
-    elements.shockCount.textContent = String(
+    elements.shockCount._value.textContent = String(
       Number.isFinite(count) ? count : 0
-    );
+    ).padStart(3, "0");
   }
 
   function show(energy, screenPosition = {
@@ -400,7 +478,18 @@ export function createShockScreen({
 
     createScreen();
 
+    // Спочатку задаємо геометрію зображення,
+    // щоб координати лічильника рахувалися від самого екрана.
+    Object.assign(elements.screen.style, {
+      left: screenPosition.x + "%",
+      top: screenPosition.y + "%",
+      width: screenPosition.width + "%",
+      height: screenPosition.height + "%",
+      display: "block"
+    });
+
     const timer = createEnergyElement("timer");
+
     timer.style.color = "#ffffff";
     timer.textContent = runtimeDisplay.textContent;
 
@@ -412,21 +501,12 @@ export function createShockScreen({
     const smallEnergy = createEnergyElement("smallEnergy");
     smallEnergy.textContent = `${energy} J`;
 
-    const shockCount = createEnergyElement("shockCount");
-    shockCount.textContent = "0";
+    createEnergyElement("shockCount");
     updateShockCount();
 
     Object.keys(NAMES).forEach(id => {
       applyPosition(id);
       makeEditable(id);
-    });
-
-    Object.assign(elements.screen.style, {
-      left: screenPosition.x + "%",
-      top: screenPosition.y + "%",
-      width: screenPosition.width + "%",
-      height: screenPosition.height + "%",
-      display: "block"
     });
 
     createEditor();
@@ -453,7 +533,9 @@ export function createShockScreen({
 
   function hide() {
     visible = false;
-    runtimeDisplay.style.visibility = originalTimerStyle.visibility;
+
+    runtimeDisplay.style.visibility =
+      originalTimerStyle.visibility;
 
     if (timerSync) {
       clearInterval(timerSync);
