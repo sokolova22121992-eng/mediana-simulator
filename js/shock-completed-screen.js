@@ -1078,12 +1078,13 @@ function setMedianaChargeActive(active) {
   medianaChargeActive = Boolean(active);
   syncCounterVisibility();
 }
-  return {
-    show,
-    hide,
-    destroy,
-    setEditorEnabled,
-    setManualMode,
+ return {
+  show,
+  hide,
+  destroy,
+  setEditorEnabled,
+  setManualMode,
+  setMedianaChargeActive,
 
     getShockCount: () => shockCount,
 
