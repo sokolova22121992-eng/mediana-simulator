@@ -808,12 +808,8 @@ if (elements.manualCounter) {
     visible = true;
 
     for (const id of EDITABLE_IDS) {
-      if (id === "manualCounter") {
-        elements[id].style.display = "none";
-      } else {
-        elements[id].style.display = "flex";
-      }
-    }
+  elements[id].style.display = "flex";
+}
 
     renderValues();
     syncEditorPanel();
