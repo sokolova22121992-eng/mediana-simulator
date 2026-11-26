@@ -67,7 +67,7 @@ const LABELS = {
   smallEnergy: "Малі джоулі біля DEFIB",
   shockCount: "Лічильник розрядів",
   consumedEnergy: "Витрачена енергія — великі Дж",
-  manualCounter: "Лічильник розрядів — ручний режим"
+  manualCounter: "Лічильник розрядів — ручний режим",
   completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО"
 };
 
