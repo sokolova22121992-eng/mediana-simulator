@@ -742,12 +742,8 @@ if (!energyControl.isConfirmed()) {
   return;
 }
   try {
-  const started = chargeControl.start();
-
-  if (started) {
-    completedScreen.setMedianaChargeActive(true);
-    testResult.textContent = "Триває заряджання...";
-  }
+  chargeControl.start();
+  testResult.textContent = "Триває заряджання...";
 } catch (error) {
   testResult.textContent = error.message;
 }
