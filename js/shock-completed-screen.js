@@ -731,9 +731,10 @@ if (id === "manualCounter" && element._value) {
 
       if (!button) continue;
 
-    const available = visible
+  const available = visible
   ? true
-  : id === "manualCounter" && manualMode;
+  : (id === "manualCounter" && manualMode) ||
+    (id === "medianaChargeCounter" && medianaChargeActive);
 
       button.style.display =
         available ? "" : "none";
