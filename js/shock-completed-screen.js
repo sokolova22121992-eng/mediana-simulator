@@ -146,10 +146,13 @@ let completionTimeout = null;
       if (!element) continue;
 
       const isActiveCounter = visible
-        ? id === "completedCounter"
-        : manualMode &&
-          id === counterScreen &&
-          shockCount > 0;
+  ? id === "completedCounter"
+  : shockCount > 0 &&
+    (
+      id === "manualCounter"
+        ? manualMode && counterScreen === "manualCounter"
+        : id === counterScreen
+    );
 
       const isBeingEdited =
         editorEnabled && editingId === id;
