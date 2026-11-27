@@ -1,16 +1,18 @@
 
 /**
  * MEDIANA D500
- * ECG Rhythms Module
+ * ECG RHYTHMS MODULE
  *
  * Відповідає за:
- * - бібліотеку ЕКГ-ритмів;
- * - анімацію зліва направо;
- * - маскування початкової лінії на фото;
+ * - 7 форм ЕКГ;
+ * - рух кривої зліва направо;
+ * - маскування оригінальної лінії на фото;
  * - редактор області ЕКГ;
- * - збереження координат і параметрів.
+ * - зміну масштабу й амплітуди;
+ * - автоматичне збереження координат.
  *
- * Не керує клінічними сценаріями та станом пристрою.
+ * Не керує клінічними сценаріями.
+ * Не змінює device-state.js.
  */
 
 const STORAGE_KEY = "mediana-ecg-layout-v1";
@@ -24,56 +26,54 @@ const DEFAULT_LAYOUT = {
   amplitude: 1
 };
 
+/* =========================================
+   1. БІБЛІОТЕКА РИТМІВ
+========================================= */
+
 const RHYTHMS = {
-  sinus: {
-    name: "Синусовий ритм",
-    rate: 75,
-    type: "normal"
+  vt_monomorphic: {
+    name: "ШТ мономорфна",
+    type: "vt_monomorphic",
+    rate: 180
   },
 
-  bradycardia: {
-    name: "Синусова брадикардія",
-    rate: 40,
-    type: "normal"
+  vt_polymorphic: {
+    name: "ШТ поліморфна",
+    type: "vt_polymorphic",
+    rate: 180
   },
 
-  tachycardia: {
-    name: "Синусова тахікардія",
-    rate: 150,
-    type: "normal"
-  },
-
-  vt: {
-    name: "Шлуночкова тахікардія",
-    rate: 180,
-    type: "wide"
-  },
-
-  vf_coarse: {
-    name: "Фібриляція шлуночків — великохвильова",
-    type: "vf_coarse"
-  },
-
-  vf_fine: {
-    name: "Фібриляція шлуночків — дрібнохвильова",
-    type: "vf_fine"
+  torsades: {
+    name: "Веретеноподібна ШТ",
+    type: "torsades",
+    rate: 180
   },
 
   asystole: {
     name: "Асистолія",
-    type: "flat"
+    type: "asystole"
   },
 
-  af: {
-    name: "Фібриляція передсердь",
-    rate: 110,
-    type: "irregular"
+  vf_fine: {
+    name: "ФШ дрібнохвильова",
+    type: "vf_fine"
+  },
+
+  vf_coarse: {
+    name: "ФШ великохвильова",
+    type: "vf_coarse"
+  },
+
+  sinus: {
+    name: "Звичайний синусовий ритм",
+    type: "sinus",
+    rate: 75
   }
 };
 
 
 /* =========================================
-   МАТЕМАТИЧНІ ФОРМИ РИТМІВ
+   2. ДОПОМІЖНІ ФУНКЦІЇ
 ========================================= */
 
 function gaussian(x, center, width) {
@@ -81,57 +81,108 @@ function gaussian(x, center, width) {
   return Math.exp(-0.5 * d * d);
 }
 
-function normalWave(phase, wide = false) {
-  const qrsWidth = wide ? 0.075 : 0.025;
-  const qrsHeight = wide ? 1.1 : 1.5;
+function normalizePhase(value) {
+  return ((value % 1) + 1) % 1;
+}
 
+function sinusWave(phase) {
   return (
     0.12 * gaussian(phase, 0.16, 0.035) -
     0.18 * gaussian(phase, 0.38, 0.012) +
-    qrsHeight * gaussian(phase, 0.42, qrsWidth) -
+    1.45 * gaussian(phase, 0.42, 0.022) -
     0.35 * gaussian(phase, 0.48, 0.018) +
     0.34 * gaussian(phase, 0.70, 0.075)
   );
 }
 
+function monomorphicVT(phase) {
+  return (
+    -0.30 * gaussian(phase, 0.32, 0.035) +
+    1.15 * gaussian(phase, 0.43, 0.065) -
+    0.45 * gaussian(phase, 0.55, 0.045)
+  );
+}
+
+function polymorphicVT(phase, beatNumber) {
+  const variation = Math.sin(beatNumber * 1.7);
+
+  const amplitude = 0.75 + 0.35 * variation;
+  const width = 0.045 + 0.018 * Math.cos(beatNumber * 1.3);
+
+  return amplitude * (
+    -0.25 * gaussian(phase, 0.32, width) +
+    1.2 * gaussian(phase, 0.43, width * 1.5) -
+    0.4 * gaussian(phase, 0.56, width)
+  );
+}
+
+function torsadesWave(phase, beatNumber) {
+  const envelope =
+    0.12 + 0.95 *
+    Math.pow(
+      Math.sin(beatNumber * 0.42 + 0.7),
+      2
+    );
+
+  const changingPolarity =
+    Math.sin(beatNumber * 0.42 + 0.7);
+
+  return envelope * changingPolarity * (
+    -0.28 * gaussian(phase, 0.31, 0.045) +
+    1.15 * gaussian(phase, 0.43, 0.065) -
+    0.42 * gaussian(phase, 0.56, 0.045)
+  );
+}
+
+
+/* =========================================
+   3. ГЕНЕРАТОР ЕКГ-СИГНАЛУ
+========================================= */
+
 function getSignal(type, time, rate) {
-  const phase = rate ? (time * rate / 60) % 1 : 0;
+  if (type === "asystole") {
+    return (
+      0.004 * Math.sin(time * 7.2) +
+      0.002 * Math.sin(time * 13.1)
+    );
+  }
+
+  if (type === "vf_coarse") {
+    return (
+      0.62 * Math.sin(time * 17.1) +
+      0.43 * Math.sin(time * 23.7) +
+      0.28 * Math.sin(time * 31.4) +
+      0.17 * Math.sin(time * 11.8) +
+      0.08 * Math.sin(time * 39.2)
+    );
+  }
+
+  if (type === "vf_fine") {
+    return (
+      0.19 * Math.sin(time * 25.3) +
+      0.14 * Math.sin(time * 37.1) +
+      0.10 * Math.sin(time * 43.7) +
+      0.07 * Math.sin(time * 18.4) +
+      0.04 * Math.sin(time * 52.2)
+    );
+  }
+
+  const period = 60 / rate;
+  const beatNumber = Math.floor(time / period);
+  const phase = normalizePhase(time / period);
 
   switch (type) {
-    case "normal":
-      return normalWave(phase);
+    case "sinus":
+      return sinusWave(phase);
 
-    case "wide":
-      return normalWave(phase, true);
+    case "vt_monomorphic":
+      return monomorphicVT(phase);
 
-    case "vf_coarse":
-      return (
-        0.65 * Math.sin(time * 17) +
-        0.42 * Math.sin(time * 23.7) +
-        0.25 * Math.sin(time * 31.2) +
-        0.18 * Math.sin(time * 11.4)
-      );
+    case "vt_polymorphic":
+      return polymorphicVT(phase, beatNumber);
 
-    case "vf_fine":
-      return (
-        0.22 * Math.sin(time * 24) +
-        0.15 * Math.sin(time * 37.2) +
-        0.12 * Math.sin(time * 43.8) +
-        0.08 * Math.sin(time * 17.5)
-      );
-
-    case "flat":
-      return 0.006 * Math.sin(time * 8);
-
-    case "irregular": {
-      const irregularPhase =
-        (time * rate / 60 + 0.12 * Math.sin(time * 2.1)) % 1;
-
-      return (
-        0.025 * Math.sin(time * 32) +
-        normalWave(irregularPhase)
-      );
-    }
+    case "torsades":
+      return torsadesWave(phase, beatNumber);
 
     default:
       return 0;
@@ -140,13 +191,13 @@ function getSignal(type, time, rate) {
 
 
 /* =========================================
-   ОСНОВНИЙ МОДУЛЬ
+   4. СТВОРЕННЯ МОДУЛЯ
 ========================================= */
 
 export function createEcgRhythms({
   deviceWrap,
-  coordinatePanel,
-  selectedName,
+  coordinatePanel = null,
+  selectedName = null,
   defaultLayout = DEFAULT_LAYOUT,
   maskColor = "#07111d",
   speed = 180,
@@ -154,19 +205,34 @@ export function createEcgRhythms({
 } = {}) {
 
   if (!deviceWrap) {
-    throw new Error("Не передано deviceWrap для ЕКГ.");
+    throw new Error(
+      "ECG: не передано deviceWrap."
+    );
   }
 
-  const layout = loadLayout();
+  if (typeof onPositionChange !== "function") {
+    throw new TypeError(
+      "ECG: onPositionChange має бути функцією."
+    );
+  }
 
-  let currentRhythm = null;
-  let animationFrame = null;
-  let animationStart = null;
+  let layout = loadLayout();
+
   let active = false;
   let editorEnabled = false;
+  let currentRhythm = null;
+
+  let animationFrame = null;
+  let animationStart = null;
+
   let dragging = null;
 
+  let currentSpeed = speed;
+
+  /* ---------- СТВОРЕННЯ МАСИВУ ---------- */
+
   const layer = document.createElement("div");
+
   layer.className = "ecg-layer";
 
   Object.assign(layer.style, {
@@ -175,20 +241,22 @@ export function createEcgRhythms({
     overflow: "hidden",
     background: maskColor,
     zIndex: "20",
-    touchAction: "none"
+    pointerEvents: "none",
+    boxSizing: "border-box"
   });
 
   const canvas = document.createElement("canvas");
 
   Object.assign(canvas.style, {
+    display: "block",
     width: "100%",
-    height: "100%",
-    display: "block"
+    height: "100%"
   });
 
   layer.appendChild(canvas);
 
   const editor = document.createElement("div");
+
   editor.className = "ecg-editor";
 
   Object.assign(editor.style, {
@@ -212,7 +280,8 @@ export function createEcgRhythms({
     background: "#ffd34e",
     border: "2px solid #111820",
     borderRadius: "3px",
-    cursor: "nwse-resize"
+    cursor: "nwse-resize",
+    touchAction: "none"
   });
 
   editor.appendChild(resizeHandle);
@@ -222,7 +291,16 @@ export function createEcgRhythms({
 
   const context = canvas.getContext("2d");
 
-  /* ---------- ЗАВАНТАЖЕННЯ ---------- */
+  if (!context) {
+    throw new Error(
+      "ECG: не вдалося створити Canvas-контекст."
+    );
+  }
+
+
+  /* =========================================
+     5. ЗБЕРЕЖЕННЯ КООРДИНАТ
+  ========================================= */
 
   function loadLayout() {
     try {
@@ -230,23 +308,44 @@ export function createEcgRhythms({
         localStorage.getItem(STORAGE_KEY)
       );
 
-      return {
+      const result = {
         ...defaultLayout,
         ...(saved || {})
       };
-    } catch {
+
+      for (const key of [
+        "x", "y", "w", "h", "scale", "amplitude"
+      ]) {
+        if (!Number.isFinite(result[key])) {
+          result[key] = DEFAULT_LAYOUT[key];
+        }
+      }
+
+      return result;
+
+    } catch (error) {
       return { ...defaultLayout };
     }
   }
 
   function saveLayout() {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(layout)
-    );
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(layout)
+      );
+    } catch (error) {
+      console.error(
+        "ECG: не вдалося зберегти координати.",
+        error
+      );
+    }
   }
 
-  /* ---------- ПОЗИЦІЯ ---------- */
+
+  /* =========================================
+     6. ЗАСТОСУВАННЯ РОЗТАШУВАННЯ
+  ========================================= */
 
   function applyLayout() {
     const styles = {
@@ -260,10 +359,14 @@ export function createEcgRhythms({
     Object.assign(editor.style, styles);
 
     updateCoordinates();
+
+    if (active) {
+      resizeCanvas();
+    }
   }
 
   function updateCoordinates() {
-    const text =
+    const coordinates =
       `X: ${layout.x.toFixed(4)}% · ` +
       `Y: ${layout.y.toFixed(4)}% · ` +
       `W: ${layout.w.toFixed(4)}% · ` +
@@ -271,9 +374,9 @@ export function createEcgRhythms({
 
     if (coordinatePanel) {
       coordinatePanel.textContent =
-        text +
-        ` · Масштаб: ${layout.scale.toFixed(2)} · ` +
-        `Амплітуда: ${layout.amplitude.toFixed(2)}`;
+        coordinates +
+        ` · Масштаб: ${layout.scale.toFixed(2)}` +
+        ` · Амплітуда: ${layout.amplitude.toFixed(2)}`;
     }
 
     if (selectedName) {
@@ -283,60 +386,75 @@ export function createEcgRhythms({
     onPositionChange({ ...layout });
   }
 
-  /* ---------- РОЗМІР CANVAS ---------- */
+
+  /* =========================================
+     7. РОЗМІР CANVAS
+  ========================================= */
 
   function resizeCanvas() {
     const rect = layer.getBoundingClientRect();
+
+    if (!rect.width || !rect.height) {
+      return;
+    }
+
     const dpr = window.devicePixelRatio || 1;
 
-    canvas.width = Math.max(1, Math.round(rect.width * dpr));
-    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
 
-    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    context.setTransform(
+      dpr, 0, 0, dpr, 0, 0
+    );
   }
 
-  /* ---------- МАЛЮВАННЯ ---------- */
 
-  function draw(timeProgress) {
+  /* =========================================
+     8. МАЛЮВАННЯ РИТМУ
+  ========================================= */
+
+  function draw(elapsedSeconds) {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
 
-    if (!width || !height) return;
+    if (!width || !height || !currentRhythm) {
+      return;
+    }
 
     context.clearRect(0, 0, width, height);
 
-    context.beginPath();
-
-    const centerY = height / 2;
-    const amplitude =
-      height * 0.36 * layout.amplitude * layout.scale;
-
-    const samples = Math.max(100, Math.ceil(width));
-
     const rhythm = RHYTHMS[currentRhythm];
 
-    const totalProgress = Math.min(
-      1,
-      timeProgress * speed / width
-    );
+    const centerY = height / 2;
 
-    const visibleWidth = width * totalProgress;
+    const amplitude =
+      height * 0.36 *
+      layout.amplitude *
+      layout.scale;
+
+    context.beginPath();
 
     context.strokeStyle = "#39ff72";
     context.lineWidth = Math.max(1, height * 0.009);
     context.lineJoin = "round";
     context.lineCap = "round";
 
+    const samples = Math.max(
+      200,
+      Math.ceil(width * 2)
+    );
+
     for (let i = 0; i <= samples; i++) {
       const x = width * i / samples;
 
-      if (x > visibleWidth) break;
-
-      const time = x / speed;
+      // Часова координата забезпечує
+      // рух кривої зліва направо.
+      const signalTime =
+        elapsedSeconds - x / currentSpeed;
 
       const value = getSignal(
         rhythm.type,
-        time,
+        signalTime,
         rhythm.rate
       );
 
@@ -352,7 +470,10 @@ export function createEcgRhythms({
     context.stroke();
   }
 
-  /* ---------- АНІМАЦІЯ ---------- */
+
+  /* =========================================
+     9. АНІМАЦІЯ
+  ========================================= */
 
   function animate(timestamp) {
     if (!active) return;
@@ -361,22 +482,25 @@ export function createEcgRhythms({
       animationStart = timestamp;
     }
 
-    const elapsed = timestamp - animationStart;
+    const elapsedSeconds =
+      (timestamp - animationStart) / 1000;
 
-    draw(elapsed);
+    draw(elapsedSeconds);
 
-    if (elapsed >= canvas.clientWidth / speed * 1000) {
-      animationStart = timestamp;
-    }
-
-    animationFrame = requestAnimationFrame(animate);
+    animationFrame =
+      requestAnimationFrame(animate);
   }
 
-  /* ---------- ЗАПУСК ---------- */
+
+  /* =========================================
+     10. ЗАПУСК РИТМУ
+  ========================================= */
 
   function start(rhythmId) {
     if (!RHYTHMS[rhythmId]) {
-      throw new Error("Невідомий ЕКГ-ритм: " + rhythmId);
+      throw new Error(
+        "ECG: невідомий ритм " + rhythmId
+      );
     }
 
     stop();
@@ -386,14 +510,17 @@ export function createEcgRhythms({
     animationStart = null;
 
     layer.style.display = "block";
-    editor.style.display = editorEnabled ? "block" : "none";
 
     resizeCanvas();
 
-    animationFrame = requestAnimationFrame(animate);
+    animationFrame =
+      requestAnimationFrame(animate);
   }
 
-  /* ---------- ЗУПИНКА ---------- */
+
+  /* =========================================
+     11. ЗУПИНКА РИТМУ
+  ========================================= */
 
   function stop() {
     active = false;
@@ -406,10 +533,15 @@ export function createEcgRhythms({
     animationStart = null;
     currentRhythm = null;
 
+    // Маска зникає, тому оригінальна
+    // зелена лінія на фотографії знову видима.
     layer.style.display = "none";
   }
 
-  /* ---------- РЕДАКТОР ---------- */
+
+  /* =========================================
+     12. РЕДАКТОР ОБЛАСТІ
+  ========================================= */
 
   function setEditorEnabled(enabled) {
     editorEnabled = Boolean(enabled);
@@ -417,99 +549,200 @@ export function createEcgRhythms({
     editor.style.display =
       editorEnabled ? "block" : "none";
 
-    if (!editorEnabled && !active) {
-      layer.style.display = "none";
+    if (editorEnabled) {
+      layer.style.display =
+        active ? "block" : "none";
     }
   }
 
-  editor.addEventListener("pointerdown", event => {
-    if (!editorEnabled) return;
+  editor.addEventListener(
+    "pointerdown",
+    event => {
+      if (!editorEnabled) return;
 
-    event.preventDefault();
+      event.preventDefault();
 
-    const rect = deviceWrap.getBoundingClientRect();
+      const rect =
+        deviceWrap.getBoundingClientRect();
 
-    dragging = {
-      resize: event.target === resizeHandle,
-      startX: event.clientX,
-      startY: event.clientY,
-      original: { ...layout },
-      rect
-    };
+      dragging = {
+        resize: event.target === resizeHandle,
+        startX: event.clientX,
+        startY: event.clientY,
+        original: { ...layout },
+        rect
+      };
 
-    editor.setPointerCapture(event.pointerId);
-  });
-
-  editor.addEventListener("pointermove", event => {
-    if (!editorEnabled || !dragging) return;
-
-    const dx =
-      (event.clientX - dragging.startX) /
-      dragging.rect.width * 100;
-
-    const dy =
-      (event.clientY - dragging.startY) /
-      dragging.rect.height * 100;
-
-    const original = dragging.original;
-
-    if (dragging.resize) {
-      layout.w = Math.max(
-        1,
-        Math.min(100 - layout.x, original.w + dx)
-      );
-
-      layout.h = Math.max(
-        1,
-        Math.min(100 - layout.y, original.h + dy)
-      );
-    } else {
-      layout.x = Math.max(
-        0,
-        Math.min(100 - layout.w, original.x + dx)
-      );
-
-      layout.y = Math.max(
-        0,
-        Math.min(100 - layout.h, original.y + dy)
-      );
+      editor.setPointerCapture(event.pointerId);
     }
+  );
 
-    applyLayout();
-  });
+  editor.addEventListener(
+    "pointermove",
+    event => {
+      if (!editorEnabled || !dragging) return;
+
+      const dx =
+        (event.clientX - dragging.startX) /
+        dragging.rect.width * 100;
+
+      const dy =
+        (event.clientY - dragging.startY) /
+        dragging.rect.height * 100;
+
+      const original = dragging.original;
+
+      if (dragging.resize) {
+        layout.w = Math.max(
+          0.5,
+          Math.min(
+            100 - layout.x,
+            original.w + dx
+          )
+        );
+
+        layout.h = Math.max(
+          0.5,
+          Math.min(
+            100 - layout.y,
+            original.h + dy
+          )
+        );
+
+      } else {
+        layout.x = Math.max(
+          0,
+          Math.min(
+            100 - layout.w,
+            original.x + dx
+          )
+        );
+
+        layout.y = Math.max(
+          0,
+          Math.min(
+            100 - layout.h,
+            original.y + dy
+          )
+        );
+      }
+
+      applyLayout();
+    }
+  );
 
   function finishEditing() {
     if (!dragging) return;
 
     dragging = null;
+
     saveLayout();
     resizeCanvas();
+    updateCoordinates();
   }
 
-  editor.addEventListener("pointerup", finishEditing);
-  editor.addEventListener("pointercancel", finishEditing);
+  editor.addEventListener(
+    "pointerup",
+    finishEditing
+  );
 
-  /* ---------- МАСШТАБ ---------- */
+  editor.addEventListener(
+    "pointercancel",
+    finishEditing
+  );
+
+
+  /* =========================================
+     13. НАЛАШТУВАННЯ МАСШТАБУ
+  ========================================= */
 
   function setScale(value) {
-    if (!Number.isFinite(value) || value <= 0) {
-      throw new RangeError("Некоректний масштаб ЕКГ.");
+    if (
+      !Number.isFinite(value) ||
+      value <= 0
+    ) {
+      throw new RangeError(
+        "ECG: некоректний масштаб."
+      );
     }
 
     layout.scale = value;
+
     saveLayout();
     updateCoordinates();
   }
 
   function setAmplitude(value) {
-    if (!Number.isFinite(value) || value <= 0) {
-      throw new RangeError("Некоректна амплітуда ЕКГ.");
+    if (
+      !Number.isFinite(value) ||
+      value <= 0
+    ) {
+      throw new RangeError(
+        "ECG: некоректна амплітуда."
+      );
     }
 
     layout.amplitude = value;
+
     saveLayout();
     updateCoordinates();
   }
+
+  function setSpeed(value) {
+    if (
+      !Number.isFinite(value) ||
+      value <= 0
+    ) {
+      throw new RangeError(
+        "ECG: некоректна швидкість."
+      );
+    }
+
+    currentSpeed = value;
+  }
+
+
+  /* =========================================
+     14. ВСТАНОВЛЕННЯ КООРДИНАТ
+  ========================================= */
+
+  function setLayout(newLayout) {
+    const next = {
+      ...layout,
+      ...newLayout
+    };
+
+    for (const key of ["x", "y", "w", "h"]) {
+      if (!Number.isFinite(next[key])) {
+        throw new TypeError(
+          "ECG: некоректна координата " + key
+        );
+      }
+    }
+
+    if (
+      next.x < 0 ||
+      next.y < 0 ||
+      next.w <= 0 ||
+      next.h <= 0 ||
+      next.x + next.w > 100 ||
+      next.y + next.h > 100
+    ) {
+      throw new RangeError(
+        "ECG: область виходить за межі пристрою."
+      );
+    }
+
+    layout = next;
+
+    applyLayout();
+    saveLayout();
+  }
+
+
+  /* =========================================
+     15. ОТРИМАННЯ ДАНИХ
+  ========================================= */
 
   function getLayout() {
     return { ...layout };
@@ -517,29 +750,65 @@ export function createEcgRhythms({
 
   function getRhythms() {
     return Object.fromEntries(
-      Object.entries(RHYTHMS).map(([id, rhythm]) => [
-        id,
-        { ...rhythm }
-      ])
+      Object.entries(RHYTHMS).map(
+        ([id, rhythm]) => [
+          id,
+          { ...rhythm }
+        ]
+      )
     );
   }
 
-  /* ---------- ІНІЦІАЛІЗАЦІЯ ---------- */
+  function getCurrentRhythm() {
+    return currentRhythm;
+  }
+
+  function isActive() {
+    return active;
+  }
+
+
+  /* =========================================
+     16. ІНІЦІАЛІЗАЦІЯ
+  ========================================= */
 
   applyLayout();
 
-  window.addEventListener("resize", () => {
-    if (active) resizeCanvas();
-  });
+  const resizeObserver =
+    new ResizeObserver(() => {
+      if (active) {
+        resizeCanvas();
+      }
+    });
+
+  resizeObserver.observe(deviceWrap);
+
+  function destroy() {
+    stop();
+
+    resizeObserver.disconnect();
+
+    layer.remove();
+    editor.remove();
+  }
 
   return {
     start,
     stop,
+
     setEditorEnabled,
+
     setScale,
     setAmplitude,
+    setSpeed,
+
+    setLayout,
+
     getLayout,
-    getRhythms
+    getRhythms,
+    getCurrentRhythm,
+    isActive,
+
+    destroy
   };
 }
-
