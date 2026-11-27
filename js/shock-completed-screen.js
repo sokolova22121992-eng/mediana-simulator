@@ -105,6 +105,7 @@ const COUNTER_IDS = [
   "energyCounter",
   "chargeCounter",
   "medianaChargeCounter",
+  "medianaShockCounter",
   "completedCounter"
 ];
 function cloneLayout(layout) {
@@ -149,6 +150,7 @@ export function createShockCompletedScreen({
   let manualMode = false;
 let counterScreen = "manualCounter";
 let medianaChargeActive = false;
+  let medianaShockActive = false;
 let completionTimeout = null;
 
   const elements = {};
@@ -160,16 +162,18 @@ let completionTimeout = null;
     const element = elements[id];
     if (!element) continue;
 
-    const isActiveCounter = visible
-      ? id === "completedCounter"
-      : id === "medianaChargeCounter"
-        ? medianaChargeActive
-        : shockCount > 0 &&
-          (
-            id === "manualCounter"
-              ? manualMode && counterScreen === "manualCounter"
-              : id === counterScreen
-          );
+  const isActiveCounter = visible
+  ? id === "completedCounter"
+  : id === "medianaShockCounter"
+    ? medianaShockActive
+    : id === "medianaChargeCounter"
+      ? medianaChargeActive
+      : shockCount > 0 &&
+        (
+          id === "manualCounter"
+            ? manualMode && counterScreen === "manualCounter"
+            : id === counterScreen
+        );
 
     const isBeingEdited =
       editorEnabled && editingId === id;
@@ -746,17 +750,19 @@ if (id === "manualCounter" && element._value) {
 
       if (!button) continue;
 
-  const available = visible
+ const available = visible
   ? true
   : (id === "manualCounter" && manualMode) ||
-    (id === "medianaChargeCounter" && medianaChargeActive);
+    (id === "medianaChargeCounter" && medianaChargeActive) ||
+    (id === "medianaShockCounter" && medianaShockActive);
 
       button.style.display =
         available ? "" : "none";
     }
 
-    elements.editorPanel.style.display =
-  editorEnabled && (visible || manualMode || medianaChargeActive)
+ elements.editorPanel.style.display =
+  editorEnabled &&
+  (visible || manualMode || medianaChargeActive || medianaShockActive)
     ? "flex"
     : "none";
   }
@@ -835,6 +841,12 @@ if (elements.chargeCounter?._value) {
       ? String(shockCount).padStart(3, "0")
       : "";
 }
+    if (elements.medianaShockCounter?._value) {
+  elements.medianaShockCounter._value.textContent =
+    shockCount > 0
+      ? String(shockCount).padStart(3, "0")
+      : "";
+}
 
 if (elements.manualCounter) {
   elements.manualCounter._value.textContent =
@@ -890,10 +902,11 @@ Object.assign(completedCounterValue.style, {
 completedCounter.appendChild(completedCounterValue);
 completedCounter._value = completedCounterValue;
   // Лічильники для екранів вибору енергії та заряджання
-  for (const id of [
+for (const id of [
   "energyCounter",
   "chargeCounter",
-  "medianaChargeCounter"
+  "medianaChargeCounter",
+  "medianaShockCounter"
 ]) {
     const counter = createValueElement(id, "#FFFFFF");
 
@@ -1022,6 +1035,7 @@ for (const id of EDITABLE_IDS) {
   shockCount = 0;
   selectedEnergy = null;
   medianaChargeActive = false;
+  medianaShockActive = false;
 
   renderValues();
   hide(false);
@@ -1095,6 +1109,11 @@ function setMedianaChargeActive(active) {
   syncCounterVisibility();
   syncEditorPanel();
 }
+  function setMedianaShockActive(active) {
+  medianaShockActive = Boolean(active);
+  syncCounterVisibility();
+  syncEditorPanel();
+}
  return {
   show,
   hide,
@@ -1102,6 +1121,7 @@ function setMedianaChargeActive(active) {
   setEditorEnabled,
   setManualMode,
   setMedianaChargeActive,
+   setMedianaShockActive,
 
     getShockCount: () => shockCount,
 
