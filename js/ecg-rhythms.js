@@ -1,4 +1,3 @@
-
 /**
  * MEDIANA D500
  * ECG RHYTHMS MODULE
@@ -18,13 +17,16 @@
 const STORAGE_KEY = "mediana-ecg-layout-v1";
 
 const DEFAULT_LAYOUT = {
-  x: 0,
-  y: 0,
-  w: 0,
-  h: 0,
+  // Початкові приблизні координати.
+  // Область вузька за висотою, її можна налаштувати редактором.
+  x: 19,
+  y: 23,
+  w: 44,
+  h: 2,
   scale: 1,
   amplitude: 1
 };
+
 
 /* =========================================
    1. БІБЛІОТЕКА РИТМІВ
@@ -199,7 +201,7 @@ export function createEcgRhythms({
   coordinatePanel = null,
   selectedName = null,
   defaultLayout = DEFAULT_LAYOUT,
-  maskColor = "#07111d",
+  maskColor = "#101010",
   speed = 180,
   onPositionChange = () => {}
 } = {}) {
@@ -229,7 +231,8 @@ export function createEcgRhythms({
 
   let currentSpeed = speed;
 
-  /* ---------- СТВОРЕННЯ МАСИВУ ---------- */
+
+  /* ---------- СТВОРЕННЯ МАСКИ ---------- */
 
   const layer = document.createElement("div");
 
@@ -254,6 +257,9 @@ export function createEcgRhythms({
   });
 
   layer.appendChild(canvas);
+
+
+  /* ---------- СТВОРЕННЯ РЕДАКТОРА ---------- */
 
   const editor = document.createElement("div");
 
@@ -303,13 +309,18 @@ export function createEcgRhythms({
   ========================================= */
 
   function loadLayout() {
+    const fallback = {
+      ...DEFAULT_LAYOUT,
+      ...(defaultLayout || {})
+    };
+
     try {
       const saved = JSON.parse(
         localStorage.getItem(STORAGE_KEY)
       );
 
       const result = {
-        ...defaultLayout,
+        ...fallback,
         ...(saved || {})
       };
 
@@ -317,14 +328,34 @@ export function createEcgRhythms({
         "x", "y", "w", "h", "scale", "amplitude"
       ]) {
         if (!Number.isFinite(result[key])) {
-          result[key] = DEFAULT_LAYOUT[key];
+          result[key] = fallback[key];
         }
+      }
+
+      // Захист від некоректних збережених координат.
+      if (
+        result.x < 0 ||
+        result.y < 0 ||
+        result.w <= 0 ||
+        result.h <= 0 ||
+        result.x + result.w > 100 ||
+        result.y + result.h > 100
+      ) {
+        return { ...fallback };
+      }
+
+      if (result.scale <= 0) {
+        result.scale = fallback.scale;
+      }
+
+      if (result.amplitude <= 0) {
+        result.amplitude = fallback.amplitude;
       }
 
       return result;
 
     } catch (error) {
-      return { ...defaultLayout };
+      return { ...fallback };
     }
   }
 
@@ -447,8 +478,7 @@ export function createEcgRhythms({
     for (let i = 0; i <= samples; i++) {
       const x = width * i / samples;
 
-      // Часова координата забезпечує
-      // рух кривої зліва направо.
+      // Забезпечує рух кривої зліва направо.
       const signalTime =
         elapsedSeconds - x / currentSpeed;
 
@@ -533,8 +563,8 @@ export function createEcgRhythms({
     animationStart = null;
     currentRhythm = null;
 
-    // Маска зникає, тому оригінальна
-    // зелена лінія на фотографії знову видима.
+    // Приховуємо маску.
+    // Оригінальна лінія на фото знову видима.
     layer.style.display = "none";
   }
 
@@ -546,14 +576,21 @@ export function createEcgRhythms({
   function setEditorEnabled(enabled) {
     editorEnabled = Boolean(enabled);
 
+    if (!editorEnabled) {
+      dragging = null;
+    }
+
     editor.style.display =
       editorEnabled ? "block" : "none";
 
-    if (editorEnabled) {
-      layer.style.display =
-        active ? "block" : "none";
-    }
+    // Під час редагування відображається лише рамка.
+    // Маска та ЕКГ з'являються під час активної оцінки.
+    layer.style.display =
+      active ? "block" : "none";
   }
+
+
+  /* ---------- ПОЧАТОК ПЕРЕМІЩЕННЯ / ЗМІНИ РОЗМІРУ ---------- */
 
   editor.addEventListener(
     "pointerdown",
@@ -576,6 +613,9 @@ export function createEcgRhythms({
       editor.setPointerCapture(event.pointerId);
     }
   );
+
+
+  /* ---------- ПЕРЕМІЩЕННЯ / ЗМІНА РОЗМІРУ ---------- */
 
   editor.addEventListener(
     "pointermove",
@@ -631,6 +671,9 @@ export function createEcgRhythms({
     }
   );
 
+
+  /* ---------- ЗАВЕРШЕННЯ РЕДАГУВАННЯ ---------- */
+
   function finishEditing() {
     if (!dragging) return;
 
@@ -648,6 +691,11 @@ export function createEcgRhythms({
 
   editor.addEventListener(
     "pointercancel",
+    finishEditing
+  );
+
+  editor.addEventListener(
+    "lostpointercapture",
     finishEditing
   );
 
@@ -783,6 +831,11 @@ export function createEcgRhythms({
 
   resizeObserver.observe(deviceWrap);
 
+
+  /* =========================================
+     17. ЗНИЩЕННЯ МОДУЛЯ
+  ========================================= */
+
   function destroy() {
     stop();
 
@@ -791,6 +844,11 @@ export function createEcgRhythms({
     layer.remove();
     editor.remove();
   }
+
+
+  /* =========================================
+     18. ПУБЛІЧНИЙ API МОДУЛЯ
+  ========================================= */
 
   return {
     start,
