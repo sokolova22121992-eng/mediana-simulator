@@ -1109,8 +1109,13 @@ function setMedianaChargeActive(active) {
   syncCounterVisibility();
   syncEditorPanel();
 }
-  function setMedianaShockActive(active) {
+ function setMedianaShockActive(active) {
   medianaShockActive = Boolean(active);
+
+  counterScreen = medianaShockActive
+    ? "medianaShockCounter"
+    : "manualCounter";
+
   syncCounterVisibility();
   syncEditorPanel();
 }
