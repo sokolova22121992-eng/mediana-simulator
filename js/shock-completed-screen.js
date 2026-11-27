@@ -72,6 +72,12 @@ chargeCounter: {
   width: 0.6114,
   height: 4.9564
 },
+  medianaShockCounter: {
+  x: 20.4456,
+  y: 20.7966,
+  width: 0.7228,
+  height: 4.2137
+},
 completedCounter: {
   x: 21.4483,
   y: 23.1733,
@@ -89,6 +95,7 @@ const LABELS = {
   completedCounter: "Лічильник розрядів — екран ШОК ВИКОНАНО",
   energyCounter: "Лічильник розрядів — вибір енергії",
   chargeCounter: "Лічильник розрядів — заряджання",
+  medianaShockCounter: "Лічильник розрядів — MEDIANA SHOCK",
 medianaChargeCounter: "Лічильник розрядів — MEDIANA CHARGE"
 };
 
