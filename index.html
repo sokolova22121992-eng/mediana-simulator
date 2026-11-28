@@ -385,6 +385,35 @@ button, select { font: inherit; }
     <div class="info muted" id="testResult" aria-live="polite">
       Координати налаштовано. Логіку кнопок додамо наступним етапом.
     </div>
+    
+<div class="info">
+  <strong>ТЕСТУВАННЯ РИТМІВ ЕКГ</strong>
+
+  <p class="muted">
+    Тимчасова панель для перевірки відображення ритмів
+  </p>
+
+  <select id="ecgRhythmSelect" style="width:100%">
+    <option value="vt_monomorphic">ШТ мономорфна</option>
+    <option value="vt_polymorphic">ШТ поліморфна</option>
+    <option value="torsades">Веретеноподібна ШТ (torsades de pointes)</option>
+    <option value="asystole">Асистолія</option>
+    <option value="vf_fine">ФШ дрібнохвильова</option>
+    <option value="vf_coarse">ФШ великохвильова</option>
+    <option value="sinus">Звичайний синусовий ритм</option>
+  </select>
+
+  <div class="toolbar" style="margin-top:10px">
+    <button id="ecgStartBtn" class="tool-button">
+      ПОКАЗАТИ ЕКГ
+    </button>
+
+    <button id="ecgStopBtn" class="tool-button">
+      ЗУПИНИТИ ЕКГ
+    </button>
+  </div>
+</div>
+
   </section>
 
 </main>
@@ -966,6 +995,44 @@ const ecgRhythms = createEcgRhythms({
 });
 
 ecgRhythms.setEditorEnabled(editing);
+  // ======================================
+// ТЕСТУВАННЯ РИТМІВ ЕКГ
+// ======================================
+
+const ecgRhythmSelect =
+  document.getElementById("ecgRhythmSelect");
+
+const ecgStartBtn =
+  document.getElementById("ecgStartBtn");
+
+const ecgStopBtn =
+  document.getElementById("ecgStopBtn");
+
+// Запуск вибраного ритму
+ecgStartBtn.addEventListener("click", () => {
+  const rhythmId = ecgRhythmSelect.value;
+
+  try {
+    ecgRhythms.start(rhythmId);
+
+    testResult.textContent =
+      "Відображається ЕКГ: " +
+      ecgRhythmSelect.options[
+        ecgRhythmSelect.selectedIndex
+      ].text;
+  } catch (error) {
+    testResult.textContent =
+      "Помилка запуску ЕКГ: " + error.message;
+  }
+});
+
+// Зупинка ЕКГ
+ecgStopBtn.addEventListener("click", () => {
+  ecgRhythms.stop();
+
+  testResult.textContent =
+    "Відображення ЕКГ зупинено.";
+});
 const energyPositionBtn = document.createElement("button");
 
 energyPositionBtn.id = "energyPositionBtn";
