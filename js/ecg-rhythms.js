@@ -569,6 +569,7 @@ function setEditorEnabled(enabled) {
   }
 
   editor.style.display = editorEnabled ? "block" : "none";
+  editor.hidden = !editorEnabled;
   editor.style.visibility = editorEnabled ? "visible" : "hidden";
   editor.style.pointerEvents = editorEnabled ? "auto" : "none";
 
