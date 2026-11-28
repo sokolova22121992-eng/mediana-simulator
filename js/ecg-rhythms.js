@@ -295,7 +295,7 @@ export function createEcgRhythms({
   selectedName = null,
   defaultLayout = DEFAULT_LAYOUT,
   maskColor = "#101010",
-  speed = 90,
+  speed = 40,
   onPositionChange = () => {}
 } = {}) {
 
