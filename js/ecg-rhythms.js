@@ -1,13 +1,12 @@
+
 /**
- * MEDIANA D500
- * ECG RHYTHMS MODULE
+ * MEDIANA D500 — ECG RHYTHMS
  *
- * Відповідає за:
- * - 7 форм ЕКГ;
- * - рух кривої зліва направо;
- * - маскування оригінальної лінії на фото;
- * - редактор області ЕКГ;
- * - зміну масштабу й амплітуди;
+ * Окремий модуль:
+ * - 7 навчальних форм ЕКГ;
+ * - анімація зліва направо;
+ * - маскування оригінальної зеленої лінії;
+ * - переміщення та зміна розміру області;
  * - автоматичне збереження координат.
  *
  * Не керує клінічними сценаріями.
@@ -17,16 +16,13 @@
 const STORAGE_KEY = "mediana-ecg-layout-v1";
 
 const DEFAULT_LAYOUT = {
-  // Початкові приблизні координати.
-  // Область вузька за висотою, її можна налаштувати редактором.
   x: 19,
   y: 23,
   w: 44,
-  h: 2,
+  h: 3.2,
   scale: 1,
   amplitude: 1
 };
-
 
 /* =========================================
    1. БІБЛІОТЕКА РИТМІВ
@@ -138,7 +134,7 @@ function torsadesWave(phase, beatNumber) {
 
 
 /* =========================================
-   3. ГЕНЕРАТОР ЕКГ-СИГНАЛУ
+   3. ГЕНЕРАТОР СИГНАЛУ
 ========================================= */
 
 function getSignal(type, time, rate) {
@@ -207,9 +203,7 @@ export function createEcgRhythms({
 } = {}) {
 
   if (!deviceWrap) {
-    throw new Error(
-      "ECG: не передано deviceWrap."
-    );
+    throw new Error("ECG: не передано deviceWrap.");
   }
 
   if (typeof onPositionChange !== "function") {
@@ -228,11 +222,9 @@ export function createEcgRhythms({
   let animationStart = null;
 
   let dragging = null;
-
   let currentSpeed = speed;
 
-
-  /* ---------- СТВОРЕННЯ МАСКИ ---------- */
+  /* ---------- МАСКА ТА CANVAS ---------- */
 
   const layer = document.createElement("div");
 
@@ -258,8 +250,7 @@ export function createEcgRhythms({
 
   layer.appendChild(canvas);
 
-
-  /* ---------- СТВОРЕННЯ РЕДАКТОРА ---------- */
+  /* ---------- РАМКА РЕДАКТОРА ---------- */
 
   const editor = document.createElement("div");
 
@@ -332,7 +323,6 @@ export function createEcgRhythms({
         }
       }
 
-      // Захист від некоректних збережених координат.
       if (
         result.x < 0 ||
         result.y < 0 ||
@@ -375,7 +365,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     6. ЗАСТОСУВАННЯ РОЗТАШУВАННЯ
+     6. РОЗТАШУВАННЯ ОБЛАСТІ
   ========================================= */
 
   function applyLayout() {
@@ -397,6 +387,8 @@ export function createEcgRhythms({
   }
 
   function updateCoordinates() {
+    if (!editorEnabled) return;
+
     const coordinates =
       `X: ${layout.x.toFixed(4)}% · ` +
       `Y: ${layout.y.toFixed(4)}% · ` +
@@ -441,7 +433,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     8. МАЛЮВАННЯ РИТМУ
+     8. МАЛЮВАННЯ ЕКГ
   ========================================= */
 
   function draw(elapsedSeconds) {
@@ -455,7 +447,6 @@ export function createEcgRhythms({
     context.clearRect(0, 0, width, height);
 
     const rhythm = RHYTHMS[currentRhythm];
-
     const centerY = height / 2;
 
     const amplitude =
@@ -478,7 +469,6 @@ export function createEcgRhythms({
     for (let i = 0; i <= samples; i++) {
       const x = width * i / samples;
 
-      // Забезпечує рух кривої зліва направо.
       const signalTime =
         elapsedSeconds - x / currentSpeed;
 
@@ -563,8 +553,6 @@ export function createEcgRhythms({
     animationStart = null;
     currentRhythm = null;
 
-    // Приховуємо маску.
-    // Оригінальна лінія на фото знову видима.
     layer.style.display = "none";
   }
 
@@ -583,14 +571,13 @@ export function createEcgRhythms({
     editor.style.display =
       editorEnabled ? "block" : "none";
 
-    // Під час редагування відображається лише рамка.
-    // Маска та ЕКГ з'являються під час активної оцінки.
     layer.style.display =
       active ? "block" : "none";
+
+    if (editorEnabled) {
+      updateCoordinates();
+    }
   }
-
-
-  /* ---------- ПОЧАТОК ПЕРЕМІЩЕННЯ / ЗМІНИ РОЗМІРУ ---------- */
 
   editor.addEventListener(
     "pointerdown",
@@ -613,9 +600,6 @@ export function createEcgRhythms({
       editor.setPointerCapture(event.pointerId);
     }
   );
-
-
-  /* ---------- ПЕРЕМІЩЕННЯ / ЗМІНА РОЗМІРУ ---------- */
 
   editor.addEventListener(
     "pointermove",
@@ -671,9 +655,6 @@ export function createEcgRhythms({
     }
   );
 
-
-  /* ---------- ЗАВЕРШЕННЯ РЕДАГУВАННЯ ---------- */
-
   function finishEditing() {
     if (!dragging) return;
 
@@ -694,21 +675,13 @@ export function createEcgRhythms({
     finishEditing
   );
 
-  editor.addEventListener(
-    "lostpointercapture",
-    finishEditing
-  );
-
 
   /* =========================================
      13. НАЛАШТУВАННЯ МАСШТАБУ
   ========================================= */
 
   function setScale(value) {
-    if (
-      !Number.isFinite(value) ||
-      value <= 0
-    ) {
+    if (!Number.isFinite(value) || value <= 0) {
       throw new RangeError(
         "ECG: некоректний масштаб."
       );
@@ -721,10 +694,7 @@ export function createEcgRhythms({
   }
 
   function setAmplitude(value) {
-    if (
-      !Number.isFinite(value) ||
-      value <= 0
-    ) {
+    if (!Number.isFinite(value) || value <= 0) {
       throw new RangeError(
         "ECG: некоректна амплітуда."
       );
@@ -737,10 +707,7 @@ export function createEcgRhythms({
   }
 
   function setSpeed(value) {
-    if (
-      !Number.isFinite(value) ||
-      value <= 0
-    ) {
+    if (!Number.isFinite(value) || value <= 0) {
       throw new RangeError(
         "ECG: некоректна швидкість."
       );
@@ -831,42 +798,25 @@ export function createEcgRhythms({
 
   resizeObserver.observe(deviceWrap);
 
-
-  /* =========================================
-     17. ЗНИЩЕННЯ МОДУЛЯ
-  ========================================= */
-
   function destroy() {
     stop();
-
     resizeObserver.disconnect();
-
     layer.remove();
     editor.remove();
   }
 
-
-  /* =========================================
-     18. ПУБЛІЧНИЙ API МОДУЛЯ
-  ========================================= */
-
   return {
     start,
     stop,
-
     setEditorEnabled,
-
     setScale,
     setAmplitude,
     setSpeed,
-
     setLayout,
-
     getLayout,
     getRhythms,
     getCurrentRhythm,
     isActive,
-
     destroy
   };
 }
