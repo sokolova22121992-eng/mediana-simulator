@@ -229,12 +229,12 @@ function getSignal(type, time, rate) {
      Ледь помітні нерегулярні коливання.
   */
 
-  if (type === "asystole") {
+ if (type === "asystole") {
     return (
-      0.012 * Math.sin(time * 3.7) +
-      0.008 * Math.sin(time * 7.3 + 1.1) +
-      0.004 * Math.sin(time * 12.7 + 2.4) +
-      0.002 * Math.sin(time * 17.1)
+      0.012 * Math.sin(time * 6.5) +
+      0.008 * Math.sin(time * 11.8 + 1.1) +
+      0.004 * Math.sin(time * 18.5 + 2.4) +
+      0.002 * Math.sin(time * 25.0)
     );
   }
 
