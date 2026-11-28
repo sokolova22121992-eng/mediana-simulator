@@ -125,12 +125,9 @@ function sinusWave(phase) {
 ========================================= */
 
 function monomorphicVT(phase) {
-  const angle = phase * Math.PI * 2;
-
   return (
-    0.82 * Math.sin(angle) +
-    0.17 * Math.sin(angle * 2 - 0.5) +
-    0.06 * Math.sin(angle * 3)
+    0.95 * gaussian(phase, 0.30, 0.105) -
+    0.22 * gaussian(phase, 0.52, 0.055)
   );
 }
 
@@ -148,23 +145,18 @@ function polymorphicVT(phase, beatNumber) {
   const secondary = Math.cos(beatNumber * 0.91);
 
   const amplitude =
-    0.62 + 0.30 * (variation + 1) / 2;
+    0.65 + 0.30 * (variation + 1) / 2;
 
   const width =
-    0.055 + 0.025 * (secondary + 1) / 2;
+    0.085 + 0.025 * (secondary + 1) / 2;
 
   const polarity =
     Math.sin(beatNumber * 0.57) > -0.75 ? 1 : -1;
 
-  const qrs =
-    -0.30 * gaussian(phase, 0.29, width) +
-     1.05 * gaussian(phase, 0.43, width * 1.5) -
-     0.48 * gaussian(phase, 0.58, width * 1.2);
-
-  const shapeVariation =
-    0.20 * Math.sin(phase * Math.PI * 4 + beatNumber);
-
-  return amplitude * polarity * qrs + shapeVariation;
+  return amplitude * polarity * (
+    0.95 * gaussian(phase, 0.34, width) -
+    0.30 * gaussian(phase, 0.56, width * 0.8)
+  );
 }
 
 
