@@ -561,23 +561,24 @@ export function createEcgRhythms({
      12. РЕДАКТОР ОБЛАСТІ
   ========================================= */
 
-  function setEditorEnabled(enabled) {
-    editorEnabled = Boolean(enabled);
+function setEditorEnabled(enabled) {
+  editorEnabled = Boolean(enabled);
 
-    if (!editorEnabled) {
-      dragging = null;
-    }
-
-    editor.style.display =
-      editorEnabled ? "block" : "none";
-
-    layer.style.display =
-      active ? "block" : "none";
-
-    if (editorEnabled) {
-      updateCoordinates();
-    }
+  if (!editorEnabled) {
+    dragging = null;
   }
+
+  editor.style.display = editorEnabled ? "block" : "none";
+  editor.style.visibility = editorEnabled ? "visible" : "hidden";
+  editor.style.pointerEvents = editorEnabled ? "auto" : "none";
+
+  layer.style.display = active ? "block" : "none";
+
+  if (editorEnabled) {
+    applyLayout();
+    updateCoordinates();
+  }
+}
 
   editor.addEventListener(
     "pointerdown",
