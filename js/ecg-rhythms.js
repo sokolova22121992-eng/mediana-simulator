@@ -125,10 +125,16 @@ function sinusWave(phase) {
 ========================================= */
 
 function monomorphicVT(phase) {
-  return (
-    0.95 * gaussian(phase, 0.30, 0.105) -
-    0.22 * gaussian(phase, 0.52, 0.055)
-  );
+  const mainHump =
+    1.05 * gaussian(phase, 0.34, 0.115);
+
+  const descendingPart =
+    -0.28 * gaussian(phase, 0.57, 0.075);
+
+  const secondaryHump =
+    0.12 * gaussian(phase, 0.78, 0.065);
+
+  return mainHump + descendingPart + secondaryHump;
 }
 
 
