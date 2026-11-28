@@ -2,12 +2,18 @@
 /**
  * MEDIANA D500 — ECG RHYTHMS
  *
- * Окремий модуль:
- * - 7 навчальних форм ЕКГ;
- * - анімація зліва направо;
- * - маскування оригінальної зеленої лінії;
- * - переміщення та зміна розміру області;
- * - автоматичне збереження координат.
+ * 7 навчальних форм ЕКГ:
+ * - Синусовий ритм
+ * - ШТ мономорфна
+ * - ШТ поліморфна
+ * - Torsades de pointes
+ * - Асистолія
+ * - ФШ дрібнохвильова
+ * - ФШ великохвильова
+ *
+ * Повільніша анімація.
+ * Збереження координат області.
+ * Переміщення та зміна розміру області.
  *
  * Не керує клінічними сценаріями.
  * Не змінює device-state.js.
@@ -42,9 +48,9 @@ const RHYTHMS = {
   },
 
   torsades: {
-    name: "Веретеноподібна ШТ",
+    name: "Веретеноподібна ШТ (torsades de pointes)",
     type: "torsades",
-    rate: 180
+    rate: 170
   },
 
   asystole: {
@@ -65,7 +71,7 @@ const RHYTHMS = {
   sinus: {
     name: "Звичайний синусовий ритм",
     type: "sinus",
-    rate: 75
+    rate: 50
   }
 };
 
@@ -83,93 +89,184 @@ function normalizePhase(value) {
   return ((value % 1) + 1) % 1;
 }
 
+/* =========================================
+   3. СИНУСОВИЙ РИТМ
+
+   Послідовність P — QRS — T.
+   Вузький QRS, плавний зубець T.
+========================================= */
+
 function sinusWave(phase) {
   return (
-    0.12 * gaussian(phase, 0.16, 0.035) -
-    0.18 * gaussian(phase, 0.38, 0.012) +
-    1.45 * gaussian(phase, 0.42, 0.022) -
-    0.35 * gaussian(phase, 0.48, 0.018) +
-    0.34 * gaussian(phase, 0.70, 0.075)
-  );
-}
+    // P
+    0.13 * gaussian(phase, 0.17, 0.035) +
 
-function monomorphicVT(phase) {
-  return (
-    -0.30 * gaussian(phase, 0.32, 0.035) +
-    1.15 * gaussian(phase, 0.43, 0.065) -
-    0.45 * gaussian(phase, 0.55, 0.045)
-  );
-}
+    // Q
+    -0.16 * gaussian(phase, 0.345, 0.012) +
 
-function polymorphicVT(phase, beatNumber) {
-  const variation = Math.sin(beatNumber * 1.7);
+    // R
+    1.05 * gaussian(phase, 0.375, 0.014) +
 
-  const amplitude = 0.75 + 0.35 * variation;
-  const width = 0.045 + 0.018 * Math.cos(beatNumber * 1.3);
+    // S
+    -0.32 * gaussian(phase, 0.405, 0.018) +
 
-  return amplitude * (
-    -0.25 * gaussian(phase, 0.32, width) +
-    1.2 * gaussian(phase, 0.43, width * 1.5) -
-    0.4 * gaussian(phase, 0.56, width)
-  );
-}
-
-function torsadesWave(phase, beatNumber) {
-  const envelope =
-    0.12 + 0.95 *
-    Math.pow(
-      Math.sin(beatNumber * 0.42 + 0.7),
-      2
-    );
-
-  const changingPolarity =
-    Math.sin(beatNumber * 0.42 + 0.7);
-
-  return envelope * changingPolarity * (
-    -0.28 * gaussian(phase, 0.31, 0.045) +
-    1.15 * gaussian(phase, 0.43, 0.065) -
-    0.42 * gaussian(phase, 0.56, 0.045)
+    // T
+    0.30 * gaussian(phase, 0.64, 0.075)
   );
 }
 
 
 /* =========================================
-   3. ГЕНЕРАТОР СИГНАЛУ
+   4. МОНОМОРФНА ШТ
+
+   Регулярні широкі комплекси.
+   Однакова форма кожного циклу.
+   Без виражених зубців P.
+========================================= */
+
+function monomorphicVT(phase) {
+  const angle = phase * Math.PI * 2;
+
+  return (
+    0.82 * Math.sin(angle) +
+    0.17 * Math.sin(angle * 2 - 0.5) +
+    0.06 * Math.sin(angle * 3)
+  );
+}
+
+
+/* =========================================
+   5. ПОЛІМОРФНА ШТ
+
+   Швидкий ритм.
+   Морфологія, амплітуда та ширина
+   комплексів змінюються від циклу до циклу.
+========================================= */
+
+function polymorphicVT(phase, beatNumber) {
+  const variation = Math.sin(beatNumber * 1.73);
+  const secondary = Math.cos(beatNumber * 0.91);
+
+  const amplitude =
+    0.62 + 0.30 * (variation + 1) / 2;
+
+  const width =
+    0.055 + 0.025 * (secondary + 1) / 2;
+
+  const polarity =
+    Math.sin(beatNumber * 0.57) > -0.75 ? 1 : -1;
+
+  const qrs =
+    -0.30 * gaussian(phase, 0.29, width) +
+     1.05 * gaussian(phase, 0.43, width * 1.5) -
+     0.48 * gaussian(phase, 0.58, width * 1.2);
+
+  const shapeVariation =
+    0.20 * Math.sin(phase * Math.PI * 4 + beatNumber);
+
+  return amplitude * polarity * qrs + shapeVariation;
+}
+
+
+/* =========================================
+   6. TORSADES DE POINTES
+
+   Циклічна зміна амплітуди та полярності.
+   Характерне поступове наростання,
+   зменшення та зміна напрямку комплексів.
+========================================= */
+
+function torsadesWave(phase, time) {
+  const rotation = time * 0.85;
+
+  const envelope =
+    0.12 + 0.88 *
+    Math.abs(Math.sin(rotation));
+
+  const angle =
+    phase * Math.PI * 2 + rotation;
+
+  const waveform =
+    Math.sin(angle) +
+    0.28 * Math.sin(angle * 2 + 0.5);
+
+  return envelope * waveform * 0.85;
+}
+
+
+/* =========================================
+   7. ХАОТИЧНІ КОЛИВАННЯ ФШ
+
+   Неперіодичне на вигляд поєднання
+   хвиль різної частоти та фази.
+========================================= */
+
+function irregularVF(time) {
+  const modulation1 =
+    Math.sin(time * 1.7);
+
+  const modulation2 =
+    Math.sin(time * 0.83 + 1.2);
+
+  return (
+    0.42 * Math.sin(time * 13.7 + modulation1 * 1.4) +
+    0.30 * Math.sin(time * 19.3 + modulation2 * 1.7) +
+    0.22 * Math.sin(time * 27.1 + Math.sin(time * 2.3)) +
+    0.13 * Math.sin(time * 34.7 + modulation1) +
+    0.09 * Math.sin(time * 42.3 + modulation2 * 2)
+  );
+}
+
+
+/* =========================================
+   8. ГЕНЕРАТОР СИГНАЛУ
 ========================================= */
 
 function getSignal(type, time, rate) {
+
+  /* АСИСТОЛІЯ
+     Майже рівна лінія.
+     Ледь помітні нерегулярні коливання.
+  */
+
   if (type === "asystole") {
     return (
-      0.004 * Math.sin(time * 7.2) +
-      0.002 * Math.sin(time * 13.1)
+      0.012 * Math.sin(time * 3.7) +
+      0.008 * Math.sin(time * 7.3 + 1.1) +
+      0.004 * Math.sin(time * 12.7 + 2.4) +
+      0.002 * Math.sin(time * 17.1)
     );
   }
+
+
+  /* ФШ ВЕЛИКОХВИЛЬОВА */
 
   if (type === "vf_coarse") {
-    return (
-      0.62 * Math.sin(time * 17.1) +
-      0.43 * Math.sin(time * 23.7) +
-      0.28 * Math.sin(time * 31.4) +
-      0.17 * Math.sin(time * 11.8) +
-      0.08 * Math.sin(time * 39.2)
-    );
+    return irregularVF(time) * 0.90;
   }
+
+
+  /* ФШ ДРІБНОХВИЛЬОВА */
 
   if (type === "vf_fine") {
-    return (
-      0.19 * Math.sin(time * 25.3) +
-      0.14 * Math.sin(time * 37.1) +
-      0.10 * Math.sin(time * 43.7) +
-      0.07 * Math.sin(time * 18.4) +
-      0.04 * Math.sin(time * 52.2)
-    );
+    return irregularVF(time) * 0.20;
   }
 
+
   const period = 60 / rate;
-  const beatNumber = Math.floor(time / period);
-  const phase = normalizePhase(time / period);
+
+  // Невелика зміна циклу для поліморфної ШТ
+  const cyclePosition =
+    type === "vt_polymorphic"
+      ? time / period + 0.035 * Math.sin(time * 1.8)
+      : time / period;
+
+  const beatNumber = Math.floor(cyclePosition);
+  const phase = normalizePhase(cyclePosition);
+
 
   switch (type) {
+
     case "sinus":
       return sinusWave(phase);
 
@@ -180,7 +277,7 @@ function getSignal(type, time, rate) {
       return polymorphicVT(phase, beatNumber);
 
     case "torsades":
-      return torsadesWave(phase, beatNumber);
+      return torsadesWave(phase, time);
 
     default:
       return 0;
@@ -189,7 +286,7 @@ function getSignal(type, time, rate) {
 
 
 /* =========================================
-   4. СТВОРЕННЯ МОДУЛЯ
+   9. СТВОРЕННЯ МОДУЛЯ
 ========================================= */
 
 export function createEcgRhythms({
@@ -224,6 +321,7 @@ export function createEcgRhythms({
   let dragging = null;
   let currentSpeed = speed;
 
+
   /* ---------- МАСКА ТА CANVAS ---------- */
 
   const layer = document.createElement("div");
@@ -249,6 +347,7 @@ export function createEcgRhythms({
   });
 
   layer.appendChild(canvas);
+
 
   /* ---------- РАМКА РЕДАКТОРА ---------- */
 
@@ -296,7 +395,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     5. ЗБЕРЕЖЕННЯ КООРДИНАТ
+     10. ЗБЕРЕЖЕННЯ КООРДИНАТ
   ========================================= */
 
   function loadLayout() {
@@ -349,6 +448,7 @@ export function createEcgRhythms({
     }
   }
 
+
   function saveLayout() {
     try {
       localStorage.setItem(
@@ -365,7 +465,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     6. РОЗТАШУВАННЯ ОБЛАСТІ
+     11. РОЗТАШУВАННЯ ОБЛАСТІ
   ========================================= */
 
   function applyLayout() {
@@ -385,6 +485,7 @@ export function createEcgRhythms({
       resizeCanvas();
     }
   }
+
 
   function updateCoordinates() {
     if (!editorEnabled) return;
@@ -411,7 +512,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     7. РОЗМІР CANVAS
+     12. РОЗМІР CANVAS
   ========================================= */
 
   function resizeCanvas() {
@@ -433,7 +534,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     8. МАЛЮВАННЯ ЕКГ
+     13. МАЛЮВАННЯ ЕКГ
   ========================================= */
 
   function draw(elapsedSeconds) {
@@ -492,7 +593,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     9. АНІМАЦІЯ
+     14. АНІМАЦІЯ
   ========================================= */
 
   function animate(timestamp) {
@@ -513,7 +614,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     10. ЗАПУСК РИТМУ
+     15. ЗАПУСК РИТМУ
   ========================================= */
 
   function start(rhythmId) {
@@ -539,7 +640,7 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     11. ЗУПИНКА РИТМУ
+     16. ЗУПИНКА РИТМУ
   ========================================= */
 
   function stop() {
@@ -558,28 +659,36 @@ export function createEcgRhythms({
 
 
   /* =========================================
-     12. РЕДАКТОР ОБЛАСТІ
+     17. РЕДАКТОР ОБЛАСТІ
   ========================================= */
 
-function setEditorEnabled(enabled) {
-  editorEnabled = Boolean(enabled);
+  function setEditorEnabled(enabled) {
+    editorEnabled = Boolean(enabled);
 
-  if (!editorEnabled) {
-    dragging = null;
+    if (!editorEnabled) {
+      dragging = null;
+    }
+
+    editor.style.display =
+      editorEnabled ? "block" : "none";
+
+    editor.hidden = !editorEnabled;
+
+    editor.style.visibility =
+      editorEnabled ? "visible" : "hidden";
+
+    editor.style.pointerEvents =
+      editorEnabled ? "auto" : "none";
+
+    layer.style.display =
+      active ? "block" : "none";
+
+    if (editorEnabled) {
+      applyLayout();
+      updateCoordinates();
+    }
   }
 
-  editor.style.display = editorEnabled ? "block" : "none";
-  editor.hidden = !editorEnabled;
-  editor.style.visibility = editorEnabled ? "visible" : "hidden";
-  editor.style.pointerEvents = editorEnabled ? "auto" : "none";
-
-  layer.style.display = active ? "block" : "none";
-
-  if (editorEnabled) {
-    applyLayout();
-    updateCoordinates();
-  }
-}
 
   editor.addEventListener(
     "pointerdown",
@@ -602,6 +711,7 @@ function setEditorEnabled(enabled) {
       editor.setPointerCapture(event.pointerId);
     }
   );
+
 
   editor.addEventListener(
     "pointermove",
@@ -657,6 +767,7 @@ function setEditorEnabled(enabled) {
     }
   );
 
+
   function finishEditing() {
     if (!dragging) return;
 
@@ -666,6 +777,7 @@ function setEditorEnabled(enabled) {
     resizeCanvas();
     updateCoordinates();
   }
+
 
   editor.addEventListener(
     "pointerup",
@@ -679,7 +791,7 @@ function setEditorEnabled(enabled) {
 
 
   /* =========================================
-     13. НАЛАШТУВАННЯ МАСШТАБУ
+     18. НАЛАШТУВАННЯ МАСШТАБУ
   ========================================= */
 
   function setScale(value) {
@@ -695,6 +807,7 @@ function setEditorEnabled(enabled) {
     updateCoordinates();
   }
 
+
   function setAmplitude(value) {
     if (!Number.isFinite(value) || value <= 0) {
       throw new RangeError(
@@ -708,6 +821,7 @@ function setEditorEnabled(enabled) {
     updateCoordinates();
   }
 
+
   function setSpeed(value) {
     if (!Number.isFinite(value) || value <= 0) {
       throw new RangeError(
@@ -720,7 +834,7 @@ function setEditorEnabled(enabled) {
 
 
   /* =========================================
-     14. ВСТАНОВЛЕННЯ КООРДИНАТ
+     19. ВСТАНОВЛЕННЯ КООРДИНАТ
   ========================================= */
 
   function setLayout(newLayout) {
@@ -758,12 +872,13 @@ function setEditorEnabled(enabled) {
 
 
   /* =========================================
-     15. ОТРИМАННЯ ДАНИХ
+     20. ОТРИМАННЯ ДАНИХ
   ========================================= */
 
   function getLayout() {
     return { ...layout };
   }
+
 
   function getRhythms() {
     return Object.fromEntries(
@@ -776,9 +891,11 @@ function setEditorEnabled(enabled) {
     );
   }
 
+
   function getCurrentRhythm() {
     return currentRhythm;
   }
+
 
   function isActive() {
     return active;
@@ -786,7 +903,7 @@ function setEditorEnabled(enabled) {
 
 
   /* =========================================
-     16. ІНІЦІАЛІЗАЦІЯ
+     21. ІНІЦІАЛІЗАЦІЯ
   ========================================= */
 
   applyLayout();
@@ -800,12 +917,16 @@ function setEditorEnabled(enabled) {
 
   resizeObserver.observe(deviceWrap);
 
+
   function destroy() {
     stop();
+
     resizeObserver.disconnect();
+
     layer.remove();
     editor.remove();
   }
+
 
   return {
     start,
