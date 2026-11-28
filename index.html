@@ -403,6 +403,7 @@ import { createEnergyControl } from "./js/energy-control.js";
 import { createChargeControl } from "./js/charge-control.js";
   import { createShockScreen } from "./js/shock-screen.js";
   import { createShockCompletedScreen } from "./js/shock-completed-screen.js";
+  import { createEcgRhythms } from "./js/ecg-rhythms.js";
 
 const wrap = document.getElementById("deviceWrap");
 const zones = [...document.querySelectorAll(".zone")];
@@ -815,6 +816,10 @@ editToggle.addEventListener("click", () => {
   if (completedScreen) {
     completedScreen.setEditorEnabled(nextState);
   }
+  // Редактор області ЕКГ
+if (ecgRhythms) {
+  ecgRhythms.setEditorEnabled(nextState);
+}
 });
 
 document.getElementById("resetZones").addEventListener("click", () => {
@@ -950,6 +955,17 @@ shockScreen = createShockScreen({
     restoreNormalTimerPosition();
   }
 });
+  // ======================================
+// ECG — ініціалізація модуля
+// ======================================
+
+const ecgRhythms = createEcgRhythms({
+  deviceWrap: wrap,
+  coordinatePanel: coordText,
+  selectedName: selectedName
+});
+
+ecgRhythms.setEditorEnabled(editing);
 const energyPositionBtn = document.createElement("button");
 
 energyPositionBtn.id = "energyPositionBtn";
