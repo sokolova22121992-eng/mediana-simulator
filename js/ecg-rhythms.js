@@ -568,8 +568,10 @@ export function createEcgRhythms({
     for (let i = 0; i <= samples; i++) {
       const x = width * i / samples;
 
-      const signalTime =
-        elapsedSeconds - x / currentSpeed;
+    const signalTime =
+  currentRhythm === "vt_monomorphic"
+    ? (elapsedSeconds * currentSpeed / 500) - x / 500
+    : elapsedSeconds - x / currentSpeed;
 
       const value = getSignal(
         rhythm.type,
